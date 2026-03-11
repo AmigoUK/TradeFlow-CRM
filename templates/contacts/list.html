@@ -1,6 +1,86 @@
 {% extends "base.html" %}
-{% block title %}Contacts — TradeFlow CRM{% endblock %}
+
+{% block title %}Interactions — TradeFlow CRM{% endblock %}
+
 {% block content %}
-<h1 class="mb-4">Contacts</h1>
-<p class="text-muted">Contact list coming soon.</p>
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Interactions</h1>
+    <a href="{{ url_for('contacts.create_contact') }}" class="btn btn-primary">
+        <i class="bi bi-plus-lg me-1"></i>Log Interaction
+    </a>
+</div>
+
+<!-- Filters -->
+<form method="GET" class="row g-3 mb-4">
+    <div class="col-md-3">
+        <select name="type" class="form-select">
+            <option value="">All Types</option>
+            {% for t in contact_types %}
+                <option value="{{ t }}" {% if selected_type == t %}selected{% endif %}>
+                    {{ t|capitalize }}
+                </option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="col-md-3">
+        <input type="date" name="date_from" class="form-control" placeholder="From"
+               value="{{ date_from }}" title="From date">
+    </div>
+    <div class="col-md-3">
+        <input type="date" name="date_to" class="form-control" placeholder="To"
+               value="{{ date_to }}" title="To date">
+    </div>
+    <div class="col-md-3">
+        <button type="submit" class="btn btn-outline-primary w-100">Filter</button>
+    </div>
+</form>
+
+{% if contacts %}
+<div class="table-responsive">
+    <table class="table table-hover align-middle">
+        <thead class="table-light">
+            <tr>
+                <th>Date</th>
+                <th>Client</th>
+                <th>Type</th>
+                <th>Notes</th>
+                <th>Outcome</th>
+                <th class="text-end">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for contact in contacts %}
+            <tr>
+                <td>{{ contact.date.strftime('%d %b %Y') }}</td>
+                <td>
+                    <a href="{{ url_for('clients.detail_client', id=contact.client_id) }}" class="text-decoration-none">
+                        {{ contact.client.company_name }}
+                    </a>
+                </td>
+                <td><span class="badge badge-{{ contact.contact_type }}">{{ contact.contact_type|capitalize }}</span></td>
+                <td>{{ contact.notes[:60] }}{% if contact.notes|length > 60 %}...{% endif %}</td>
+                <td>{{ contact.outcome or '—' }}</td>
+                <td class="text-end">
+                    <a href="{{ url_for('contacts.edit_contact', id=contact.id) }}" class="btn btn-sm btn-outline-secondary">
+                        <i class="bi bi-pencil"></i>
+                    </a>
+                    <button type="button" class="btn btn-sm btn-outline-danger"
+                            data-bs-toggle="modal" data-bs-target="#confirmDeleteModal"
+                            data-item-name="this interaction"
+                            data-delete-url="{{ url_for('contacts.delete_contact', id=contact.id) }}">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="empty-state">
+    <i class="bi bi-chat-dots d-block"></i>
+    <h5>No interactions found</h5>
+    <p>{% if selected_type or date_from or date_to %}Try adjusting your filters.{% else %}Log your first client interaction to get started.{% endif %}</p>
+</div>
+{% endif %}
 {% endblock %}
