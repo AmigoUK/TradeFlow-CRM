@@ -1,3 +1,5 @@
+from datetime import datetime, date
+
 from extensions import db
 
 PRIORITIES = ["high", "medium", "low"]
@@ -7,4 +9,18 @@ class FollowUp(db.Model):
     __tablename__ = "followups"
 
     id = db.Column(db.Integer, primary_key=True)
-    client_id = db.Column(db.Integer, db.ForeignKey("clients.id"), nullable=False)
+    client_id = db.Column(
+        db.Integer, db.ForeignKey("clients.id"), nullable=False
+    )
+    due_date = db.Column(db.Date, nullable=False, default=date.today)
+    priority = db.Column(db.String(10), nullable=False, default="medium")
+    completed = db.Column(db.Boolean, default=False)
+    notes = db.Column(db.Text, default="")
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    @property
+    def is_overdue(self):
+        return not self.completed and self.due_date < date.today()
+
+    def __repr__(self):
+        return f"<FollowUp due {self.due_date} priority={self.priority}>"
