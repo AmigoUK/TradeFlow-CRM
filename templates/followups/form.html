@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block title %}{{ 'Edit' if followup else 'New' }} Follow-up — TradeFlow CRM{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{{ url_for('followups.list_followups') }}">Follow-ups</a></li>
+        <li class="breadcrumb-item active">{{ 'Edit' if followup else 'New Follow-up' }}</li>
+    </ol>
+</nav>
+
+<h1 class="mb-4">{{ 'Edit Follow-up' if followup else 'New Follow-up' }}</h1>
+
+<div class="card">
+    <div class="card-body">
+        <form method="POST">
+            <div class="mb-3">
+                <label for="client_id" class="form-label">Client <span class="text-danger">*</span></label>
+                <select class="form-select" id="client_id" name="client_id" required>
+                    <option value="">Select a client...</option>
+                    {% for cl in clients %}
+                        <option value="{{ cl.id }}"
+                            {% if selected_client_id == cl.id %}selected{% endif %}>
+                            {{ cl.company_name }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="due_date" class="form-label">Due Date</label>
+                    <input type="date" class="form-control" id="due_date" name="due_date"
+                           value="{{ followup.due_date.isoformat() if followup else today }}">
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="priority" class="form-label">Priority</label>
+                    <select class="form-select" id="priority" name="priority">
+                        {% for p in priorities %}
+                            <option value="{{ p }}"
+                                {% if followup and followup.priority == p %}selected{% elif not followup and p == 'medium' %}selected{% endif %}>
+                                {{ p|capitalize }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label for="notes" class="form-label">Notes</label>
+                <textarea class="form-control" id="notes" name="notes" rows="4">{{ followup.notes if followup else '' }}</textarea>
+            </div>
+
+            {% if followup %}
+            <div class="mb-3 form-check">
+                <input type="checkbox" class="form-check-input" id="completed" name="completed"
+                       {% if followup.completed %}checked{% endif %}>
+                <label class="form-check-label" for="completed">Completed</label>
+            </div>
+            {% endif %}
+
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-check-lg me-1"></i>{{ 'Update' if followup else 'Create' }} Follow-up
+                </button>
+                <a href="{{ url_for('followups.list_followups') }}" class="btn btn-outline-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

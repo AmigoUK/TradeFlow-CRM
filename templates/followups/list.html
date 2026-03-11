@@ -1,6 +1,105 @@
 {% extends "base.html" %}
+
 {% block title %}Follow-ups — TradeFlow CRM{% endblock %}
+
 {% block content %}
-<h1 class="mb-4">Follow-ups</h1>
-<p class="text-muted">Follow-up list coming soon.</p>
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Follow-ups</h1>
+    <a href="{{ url_for('followups.create_followup') }}" class="btn btn-primary">
+        <i class="bi bi-plus-lg me-1"></i>Add Follow-up
+    </a>
+</div>
+
+<!-- Filters -->
+<form method="GET" class="row g-3 mb-4">
+    <div class="col-md-3">
+        <select name="priority" class="form-select">
+            <option value="">All Priorities</option>
+            {% for p in priorities %}
+                <option value="{{ p }}" {% if selected_priority == p %}selected{% endif %}>
+                    {{ p|capitalize }}
+                </option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="col-md-3">
+        <select name="completed" class="form-select">
+            <option value="">All Statuses</option>
+            <option value="0" {% if show_completed == '0' %}selected{% endif %}>Pending</option>
+            <option value="1" {% if show_completed == '1' %}selected{% endif %}>Completed</option>
+        </select>
+    </div>
+    <div class="col-md-3">
+        <div class="form-check mt-2">
+            <input class="form-check-input" type="checkbox" name="overdue" value="1" id="overdueCheck"
+                   {% if show_overdue == '1' %}checked{% endif %}>
+            <label class="form-check-label" for="overdueCheck">Overdue only</label>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <button type="submit" class="btn btn-outline-primary w-100">Filter</button>
+    </div>
+</form>
+
+{% if followups %}
+<div class="table-responsive">
+    <table class="table table-hover align-middle">
+        <thead class="table-light">
+            <tr>
+                <th>Due Date</th>
+                <th>Client</th>
+                <th>Priority</th>
+                <th>Notes</th>
+                <th>Status</th>
+                <th class="text-end">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for fu in followups %}
+            <tr class="{% if fu.is_overdue %}overdue{% endif %}">
+                <td>{{ fu.due_date.strftime('%d %b %Y') }}</td>
+                <td>
+                    <a href="{{ url_for('clients.detail_client', id=fu.client_id) }}" class="text-decoration-none">
+                        {{ fu.client.company_name }}
+                    </a>
+                </td>
+                <td><span class="badge badge-{{ fu.priority }}">{{ fu.priority|capitalize }}</span></td>
+                <td>{{ fu.notes[:60] }}{% if fu.notes|length > 60 %}...{% endif %}</td>
+                <td>
+                    {% if fu.completed %}
+                        <span class="badge bg-success">Completed</span>
+                    {% elif fu.is_overdue %}
+                        <span class="badge bg-danger">Overdue</span>
+                    {% else %}
+                        <span class="badge bg-secondary">Pending</span>
+                    {% endif %}
+                </td>
+                <td class="text-end">
+                    <form method="POST" action="{{ url_for('followups.complete_followup', id=fu.id) }}" class="d-inline">
+                        <button type="submit" class="btn btn-sm btn-outline-success" title="{{ 'Reopen' if fu.completed else 'Mark complete' }}">
+                            <i class="bi bi-{{ 'arrow-counterclockwise' if fu.completed else 'check-lg' }}"></i>
+                        </button>
+                    </form>
+                    <a href="{{ url_for('followups.edit_followup', id=fu.id) }}" class="btn btn-sm btn-outline-secondary">
+                        <i class="bi bi-pencil"></i>
+                    </a>
+                    <button type="button" class="btn btn-sm btn-outline-danger"
+                            data-bs-toggle="modal" data-bs-target="#confirmDeleteModal"
+                            data-item-name="this follow-up"
+                            data-delete-url="{{ url_for('followups.delete_followup', id=fu.id) }}">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="empty-state">
+    <i class="bi bi-calendar-check d-block"></i>
+    <h5>No follow-ups found</h5>
+    <p>{% if selected_priority or show_overdue or show_completed %}Try adjusting your filters.{% else %}Schedule your first follow-up to stay on top of tasks.{% endif %}</p>
+</div>
+{% endif %}
 {% endblock %}
