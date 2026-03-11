@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+
+{% block title %}{{ client.company_name }} — TradeFlow CRM{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{{ url_for('clients.list_clients') }}">Clients</a></li>
+        <li class="breadcrumb-item active">{{ client.company_name }}</li>
+    </ol>
+</nav>
+
+<div class="d-flex justify-content-between align-items-start mb-4">
+    <div>
+        <h1>{{ client.company_name }}</h1>
+        <span class="badge badge-{{ client.status }} fs-6">{{ client.status|capitalize }}</span>
+    </div>
+    <div>
+        <a href="{{ url_for('clients.edit_client', id=client.id) }}" class="btn btn-outline-primary">
+            <i class="bi bi-pencil me-1"></i>Edit
+        </a>
+        <button type="button" class="btn btn-outline-danger"
+                data-bs-toggle="modal" data-bs-target="#confirmDeleteModal"
+                data-item-name="{{ client.company_name }}"
+                data-delete-url="{{ url_for('clients.delete_client', id=client.id) }}">
+            <i class="bi bi-trash me-1"></i>Delete
+        </button>
+    </div>
+</div>
+
+<!-- Client Info Card -->
+<div class="card mb-4">
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-6">
+                <p><strong>Contact Person:</strong> {{ client.contact_person or '—' }}</p>
+                <p><strong>Industry:</strong> {{ client.industry or '—' }}</p>
+            </div>
+            <div class="col-md-6">
+                <p><strong>Phone:</strong> {{ client.phone or '—' }}</p>
+                <p><strong>Email:</strong> {{ client.email or '—' }}</p>
+            </div>
+        </div>
+        <p class="text-muted mb-0">
+            <small>Created {{ client.created_at.strftime('%d %b %Y') }}</small>
+        </p>
+    </div>
+</div>
+
+<!-- Tabs: Contacts & Follow-ups -->
+<ul class="nav nav-tabs mb-3" role="tablist">
+    <li class="nav-item">
+        <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#contacts-tab" type="button">
+            <i class="bi bi-chat-dots me-1"></i>Interactions ({{ client.contacts|length }})
+        </button>
+    </li>
+    <li class="nav-item">
+        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#followups-tab" type="button">
+            <i class="bi bi-calendar-check me-1"></i>Follow-ups ({{ client.followups|length }})
+        </button>
+    </li>
+</ul>
+
+<div class="tab-content">
+    <!-- Contacts Tab -->
+    <div class="tab-pane fade show active" id="contacts-tab">
+        <a href="{{ url_for('contacts.create_contact', client_id=client.id) }}" class="btn btn-sm btn-outline-primary mb-3">
+            <i class="bi bi-plus-lg me-1"></i>Log Interaction
+        </a>
+        {% if client.contacts %}
+        <div class="table-responsive">
+            <table class="table table-sm">
+                <thead class="table-light">
+                    <tr>
+                        <th>Date</th>
+                        <th>Type</th>
+                        <th>Notes</th>
+                        <th>Outcome</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for contact in client.contacts|sort(attribute='date', reverse=true) %}
+                    <tr>
+                        <td>{{ contact.date.strftime('%d %b %Y') }}</td>
+                        <td><span class="badge badge-{{ contact.contact_type }}">{{ contact.contact_type|capitalize }}</span></td>
+                        <td>{{ contact.notes[:80] }}{% if contact.notes|length > 80 %}...{% endif %}</td>
+                        <td>{{ contact.outcome or '—' }}</td>
+                        <td class="text-end">
+                            <a href="{{ url_for('contacts.edit_contact', id=contact.id) }}" class="btn btn-sm btn-outline-secondary">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="text-muted">No interactions logged yet.</p>
+        {% endif %}
+    </div>
+
+    <!-- Follow-ups Tab -->
+    <div class="tab-pane fade" id="followups-tab">
+        <a href="{{ url_for('followups.create_followup', client_id=client.id) }}" class="btn btn-sm btn-outline-primary mb-3">
+            <i class="bi bi-plus-lg me-1"></i>Add Follow-up
+        </a>
+        {% if client.followups %}
+        <div class="table-responsive">
+            <table class="table table-sm">
+                <thead class="table-light">
+                    <tr>
+                        <th>Due Date</th>
+                        <th>Priority</th>
+                        <th>Notes</th>
+                        <th>Status</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for fu in client.followups|sort(attribute='due_date') %}
+                    <tr class="{% if fu.is_overdue %}overdue{% endif %}">
+                        <td>{{ fu.due_date.strftime('%d %b %Y') }}</td>
+                        <td><span class="badge badge-{{ fu.priority }}">{{ fu.priority|capitalize }}</span></td>
+                        <td>{{ fu.notes[:80] }}{% if fu.notes|length > 80 %}...{% endif %}</td>
+                        <td>
+                            {% if fu.completed %}
+                                <span class="badge bg-success">Completed</span>
+                            {% elif fu.is_overdue %}
+                                <span class="badge bg-danger">Overdue</span>
+                            {% else %}
+                                <span class="badge bg-secondary">Pending</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end">
+                            <a href="{{ url_for('followups.edit_followup', id=fu.id) }}" class="btn btn-sm btn-outline-secondary">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="text-muted">No follow-ups scheduled yet.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

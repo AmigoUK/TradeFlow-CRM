@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+
+{% block title %}{{ 'Edit' if client else 'New' }} Client — TradeFlow CRM{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{{ url_for('clients.list_clients') }}">Clients</a></li>
+        {% if client %}
+            <li class="breadcrumb-item"><a href="{{ url_for('clients.detail_client', id=client.id) }}">{{ client.company_name }}</a></li>
+            <li class="breadcrumb-item active">Edit</li>
+        {% else %}
+            <li class="breadcrumb-item active">New Client</li>
+        {% endif %}
+    </ol>
+</nav>
+
+<h1 class="mb-4">{{ 'Edit Client' if client else 'New Client' }}</h1>
+
+<div class="card">
+    <div class="card-body">
+        <form method="POST">
+            <div class="mb-3">
+                <label for="company_name" class="form-label">Company Name <span class="text-danger">*</span></label>
+                <input type="text" class="form-control" id="company_name" name="company_name"
+                       value="{{ client.company_name if client else '' }}" required>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="contact_person" class="form-label">Contact Person</label>
+                    <input type="text" class="form-control" id="contact_person" name="contact_person"
+                           value="{{ client.contact_person if client else '' }}">
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="industry" class="form-label">Industry</label>
+                    <input type="text" class="form-control" id="industry" name="industry"
+                           value="{{ client.industry if client else '' }}">
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="phone" class="form-label">Phone</label>
+                    <input type="tel" class="form-control" id="phone" name="phone"
+                           value="{{ client.phone if client else '' }}">
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="email" class="form-label">Email</label>
+                    <input type="email" class="form-control" id="email" name="email"
+                           value="{{ client.email if client else '' }}">
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label for="status" class="form-label">Status</label>
+                <select class="form-select" id="status" name="status">
+                    {% for s in statuses %}
+                        <option value="{{ s }}" {% if client and client.status == s %}selected{% elif not client and s == 'lead' %}selected{% endif %}>
+                            {{ s|capitalize }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-check-lg me-1"></i>{{ 'Update' if client else 'Create' }} Client
+                </button>
+                <a href="{{ url_for('clients.detail_client', id=client.id) if client else url_for('clients.list_clients') }}"
+                   class="btn btn-outline-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
