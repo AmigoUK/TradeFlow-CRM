@@ -1,4 +1,4 @@
-from flask import flash, redirect, render_template, request, url_for
+from flask import flash, jsonify, redirect, render_template, request, url_for
 from sqlalchemy import func
 
 from blueprints.clients import clients_bp
@@ -10,6 +10,7 @@ from models import Client, CLIENT_STATUSES, Contact, FollowUp
 def list_clients():
     q = request.args.get("q", "").strip()
     status = request.args.get("status", "").strip()
+    view = request.args.get("view", "table")
 
     # Subqueries for last contact and next follow-up per client
     last_contact_sq = (
@@ -43,7 +44,7 @@ def list_clients():
 
     if q:
         query = query.filter(Client.company_name.ilike(f"%{q}%"))
-    if status:
+    if status and view != "board":
         query = query.filter(Client.status == status)
 
     results = query.order_by(Client.company_name).all()
@@ -61,6 +62,7 @@ def list_clients():
         statuses=CLIENT_STATUSES,
         q=q,
         status=status,
+        view=view,
     )
 
 
@@ -187,6 +189,18 @@ def edit_client(id):
         client=client,
         statuses=CLIENT_STATUSES,
     )
+
+
+@clients_bp.route("/<int:id>/status", methods=["PATCH"])
+def update_status(id):
+    client = db.get_or_404(Client, id)
+    data = request.get_json(silent=True) or {}
+    new_status = data.get("status", "")
+    if new_status not in CLIENT_STATUSES:
+        return jsonify({"ok": False, "error": f"Invalid status. Must be one of: {', '.join(CLIENT_STATUSES)}"}), 400
+    client.status = new_status
+    db.session.commit()
+    return jsonify({"ok": True, "status": new_status})
 
 
 @clients_bp.route("/<int:id>/delete", methods=["POST"])
