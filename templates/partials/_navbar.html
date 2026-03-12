@@ -15,6 +15,12 @@
                     </a>
                 </li>
                 <li class="nav-item">
+                    <a class="nav-link {% if request.endpoint == 'dashboard.calendar' %}active{% endif %}"
+                       href="{{ url_for('dashboard.calendar') }}">
+                        <i class="bi bi-calendar3 me-1"></i>Calendar
+                    </a>
+                </li>
+                <li class="nav-item">
                     <a class="nav-link {% if request.endpoint and request.endpoint.startswith('clients.') %}active{% endif %}"
                        href="{{ url_for('clients.list_clients') }}">
                         <i class="bi bi-building me-1"></i>Clients
