@@ -1,0 +1,312 @@
+{% extends "base.html" %}
+
+{% block title %}Quarterly Overview — NextStep CRM{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1><i class="bi bi-bar-chart-steps me-2"></i>Quarterly Overview</h1>
+    <div class="d-flex align-items-center gap-2">
+        <a href="{{ url_for('dashboard.quarterly', year=year - 1) }}" class="btn btn-outline-secondary btn-sm" id="prevYear">
+            <i class="bi bi-chevron-left"></i> {{ year - 1 }}
+        </a>
+        <span class="fw-bold fs-5" id="yearDisplay">{{ year }}</span>
+        <a href="{{ url_for('dashboard.quarterly', year=year + 1) }}" class="btn btn-outline-secondary btn-sm" id="nextYear">
+            {{ year + 1 }} <i class="bi bi-chevron-right"></i>
+        </a>
+    </div>
+</div>
+
+<!-- Year summary row -->
+<div class="row mb-4" id="yearSummary" style="display: none;">
+    <div class="col-md-3 col-6 mb-3">
+        <div class="card text-center stat-card h-100">
+            <div class="card-body py-3">
+                <div class="fs-4 fw-bold text-primary" id="sumInteractions">0</div>
+                <small class="text-muted">Total Interactions</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 col-6 mb-3">
+        <div class="card text-center stat-card h-100">
+            <div class="card-body py-3">
+                <div class="fs-4 fw-bold text-primary" id="sumFollowups">0</div>
+                <small class="text-muted">Total Follow-ups</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 col-6 mb-3">
+        <div class="card text-center stat-card h-100">
+            <div class="card-body py-3">
+                <div class="fs-4 fw-bold text-success" id="sumCompletionRate">0%</div>
+                <small class="text-muted">Completion Rate</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 col-6 mb-3">
+        <div class="card text-center stat-card h-100">
+            <div class="card-body py-3">
+                <div class="fs-4 fw-bold text-info" id="sumBusiestQuarter">—</div>
+                <small class="text-muted">Busiest Quarter</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Loading spinner -->
+<div class="text-center py-5" id="loadingSpinner">
+    <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Loading...</span>
+    </div>
+</div>
+
+<!-- Quarter cards grid -->
+<div class="row" id="quarterGrid" style="display: none;"></div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    var year = {{ year }};
+    var quarterNames = {
+        "1": { label: "Q1: January — March", months: [1, 2, 3], calStart: "-01-01" },
+        "2": { label: "Q2: April — June", months: [4, 5, 6], calStart: "-04-01" },
+        "3": { label: "Q3: July — September", months: [7, 8, 9], calStart: "-07-01" },
+        "4": { label: "Q4: October — December", months: [10, 11, 12], calStart: "-10-01" }
+    };
+    var quarterColours = { "1": "#0d6efd", "2": "#198754", "3": "#fd7e14", "4": "#6f42c1" };
+
+    fetchData();
+
+    function fetchData() {
+        document.getElementById("loadingSpinner").style.display = "block";
+        document.getElementById("quarterGrid").style.display = "none";
+        document.getElementById("yearSummary").style.display = "none";
+
+        fetch("/api/quarterly-data?year=" + year)
+        .then(function (r) { return r.json(); })
+        .then(function (data) { renderAll(data); })
+        .catch(function () {
+            document.getElementById("loadingSpinner").style.display = "none";
+            document.getElementById("quarterGrid").style.display = "flex";
+            document.getElementById("quarterGrid").textContent = "Failed to load data.";
+        });
+    }
+
+    function renderAll(data) {
+        document.getElementById("loadingSpinner").style.display = "none";
+        document.getElementById("yearSummary").style.display = "flex";
+        document.getElementById("quarterGrid").style.display = "flex";
+
+        var totalInteractions = 0, totalFollowups = 0, totalCompleted = 0;
+        var busiestQ = "—", busiestCount = 0;
+
+        for (var q = 1; q <= 4; q++) {
+            var qd = data.quarters[String(q)];
+            totalInteractions += qd.total_contacts;
+            totalFollowups += qd.total_followups;
+            totalCompleted += qd.completed;
+            var activity = qd.total_contacts + qd.total_followups;
+            if (activity > busiestCount) {
+                busiestCount = activity;
+                busiestQ = "Q" + q;
+            }
+        }
+
+        document.getElementById("sumInteractions").textContent = totalInteractions;
+        document.getElementById("sumFollowups").textContent = totalFollowups;
+        var rate = totalFollowups > 0 ? Math.round((totalCompleted / totalFollowups) * 100) : 0;
+        document.getElementById("sumCompletionRate").textContent = rate + "%";
+        document.getElementById("sumBusiestQuarter").textContent = busiestQ;
+
+        var grid = document.getElementById("quarterGrid");
+        grid.textContent = "";
+
+        for (var q = 1; q <= 4; q++) {
+            grid.appendChild(buildQuarterCard(q, data));
+        }
+    }
+
+    function buildQuarterCard(q, data) {
+        var qd = data.quarters[String(q)];
+        var info = quarterNames[String(q)];
+        var colour = quarterColours[String(q)];
+        var isCurrent = data.current_quarter === q;
+        var activity = qd.total_contacts + qd.total_followups;
+
+        var col = document.createElement("div");
+        col.className = "col-lg-6 col-12 mb-4";
+
+        var card = document.createElement("div");
+        card.className = "card quarter-card h-100" + (isCurrent ? " quarter-card-current" : "");
+
+        /* Header */
+        var header = document.createElement("div");
+        header.className = "card-header d-flex justify-content-between align-items-center";
+        header.style.backgroundColor = isCurrent ? colour : "#f8f9fa";
+        header.style.color = isCurrent ? "#fff" : "#333";
+
+        var title = document.createElement("strong");
+        title.textContent = info.label;
+        header.appendChild(title);
+
+        var badge = document.createElement("span");
+        badge.className = "badge " + (isCurrent ? "bg-white text-dark" : "bg-primary text-white");
+        badge.textContent = activity + " activities";
+        header.appendChild(badge);
+
+        card.appendChild(header);
+
+        /* Body */
+        var body = document.createElement("div");
+        body.className = "card-body";
+
+        /* Mini stat boxes */
+        var statsRow = document.createElement("div");
+        statsRow.className = "row text-center mb-3";
+        var statItems = [
+            { val: qd.total_contacts, label: "Interactions", cls: "text-primary" },
+            { val: qd.total_followups, label: "Follow-ups", cls: "text-primary" },
+            { val: qd.completed, label: "Completed", cls: "text-success" },
+            { val: qd.pending, label: "Pending", cls: qd.pending > 0 ? "text-warning" : "text-muted" }
+        ];
+        for (var i = 0; i < statItems.length; i++) {
+            var statCol = document.createElement("div");
+            statCol.className = "col-3";
+            var box = document.createElement("div");
+            box.className = "quarter-stat-box";
+            var valEl = document.createElement("div");
+            valEl.className = "fw-bold " + statItems[i].cls;
+            valEl.textContent = statItems[i].val;
+            box.appendChild(valEl);
+            var labelEl = document.createElement("small");
+            labelEl.className = "text-muted";
+            labelEl.textContent = statItems[i].label;
+            box.appendChild(labelEl);
+            statCol.appendChild(box);
+            statsRow.appendChild(statCol);
+        }
+        body.appendChild(statsRow);
+
+        /* Monthly density bars */
+        var densityLabel = document.createElement("small");
+        densityLabel.className = "text-muted fw-semibold d-block mb-2";
+        densityLabel.textContent = "Monthly Activity";
+        body.appendChild(densityLabel);
+
+        for (var m = 0; m < 3; m++) {
+            var md = qd.months[m];
+            var barRow = document.createElement("div");
+            barRow.className = "d-flex align-items-center mb-1";
+
+            var monthName = document.createElement("small");
+            monthName.className = "text-muted me-2";
+            monthName.style.width = "80px";
+            monthName.textContent = md.name;
+            barRow.appendChild(monthName);
+
+            var progress = document.createElement("div");
+            progress.className = "progress flex-grow-1 quarter-density-bar";
+            progress.style.height = "18px";
+            var pctWidth = Math.round((md.total / data.max_monthly_activity) * 100);
+            var bar = document.createElement("div");
+            bar.className = "progress-bar";
+            bar.style.width = pctWidth + "%";
+            bar.style.backgroundColor = colour;
+            bar.textContent = md.total > 0 ? md.total : "";
+            bar.style.fontSize = "0.7rem";
+            progress.appendChild(bar);
+            barRow.appendChild(progress);
+
+            body.appendChild(barRow);
+        }
+
+        /* Activity type stacked bar */
+        var typeLabel = document.createElement("small");
+        typeLabel.className = "text-muted fw-semibold d-block mt-3 mb-2";
+        typeLabel.textContent = "Activity Types";
+        body.appendChild(typeLabel);
+
+        var typeTotal = qd.type_breakdown.phone + qd.type_breakdown.email + qd.type_breakdown.meeting;
+        if (typeTotal > 0) {
+            var typeBar = document.createElement("div");
+            typeBar.className = "progress mb-2";
+            typeBar.style.height = "22px";
+
+            var types = [
+                { key: "phone", colour: "#0d6efd", label: "Phone" },
+                { key: "email", colour: "#6f42c1", label: "Email" },
+                { key: "meeting", colour: "#fd7e14", label: "Meeting" }
+            ];
+            for (var t = 0; t < types.length; t++) {
+                var ct = types[t];
+                var count = qd.type_breakdown[ct.key];
+                if (count > 0) {
+                    var seg = document.createElement("div");
+                    seg.className = "progress-bar";
+                    seg.style.backgroundColor = ct.colour;
+                    seg.style.width = Math.round((count / typeTotal) * 100) + "%";
+                    seg.title = ct.label + ": " + count;
+                    seg.textContent = count;
+                    seg.style.fontSize = "0.7rem";
+                    typeBar.appendChild(seg);
+                }
+            }
+            body.appendChild(typeBar);
+        } else {
+            var noType = document.createElement("small");
+            noType.className = "text-muted";
+            noType.textContent = "No interactions recorded";
+            body.appendChild(noType);
+        }
+
+        /* Top clients */
+        if (qd.top_clients.length > 0) {
+            var clientsLabel = document.createElement("small");
+            clientsLabel.className = "text-muted fw-semibold d-block mt-3 mb-2";
+            clientsLabel.textContent = "Top Clients";
+            body.appendChild(clientsLabel);
+
+            var clientList = document.createElement("div");
+            for (var c = 0; c < qd.top_clients.length; c++) {
+                var cl = qd.top_clients[c];
+                var row = document.createElement("div");
+                row.className = "d-flex justify-content-between align-items-center quarter-client-row py-1";
+
+                var link = document.createElement("a");
+                link.href = "/clients/" + cl.id;
+                link.className = "text-decoration-none";
+                link.textContent = cl.name;
+                row.appendChild(link);
+
+                var countBadge = document.createElement("span");
+                countBadge.className = "badge bg-light text-dark";
+                countBadge.textContent = cl.count;
+                row.appendChild(countBadge);
+
+                clientList.appendChild(row);
+            }
+            body.appendChild(clientList);
+        }
+
+        card.appendChild(body);
+
+        /* Footer */
+        var footer = document.createElement("div");
+        footer.className = "card-footer text-end";
+        var calLink = document.createElement("a");
+        calLink.href = "/calendar?initialDate=" + year + info.calStart;
+        calLink.className = "btn btn-sm btn-outline-primary";
+        calLink.textContent = "";
+        var calIcon = document.createElement("i");
+        calIcon.className = "bi bi-calendar3 me-1";
+        calLink.appendChild(calIcon);
+        calLink.appendChild(document.createTextNode("View in Calendar"));
+        footer.appendChild(calLink);
+        card.appendChild(footer);
+
+        col.appendChild(card);
+        return col;
+    }
+});
+</script>
+{% endblock %}

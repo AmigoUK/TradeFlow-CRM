@@ -27,6 +27,12 @@
                     </a>
                 </li>
                 <li class="nav-item">
+                    <a class="nav-link {% if request.endpoint == 'dashboard.quarterly' %}active{% endif %}"
+                       href="{{ url_for('dashboard.quarterly') }}">
+                        <i class="bi bi-bar-chart-steps me-1"></i>Quarterly
+                    </a>
+                </li>
+                <li class="nav-item">
                     <a class="nav-link {% if request.endpoint and request.endpoint.startswith('clients.') %}active{% endif %}"
                        href="{{ url_for('clients.list_clients') }}">
                         <i class="bi bi-building me-1"></i>Clients

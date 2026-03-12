@@ -2,7 +2,10 @@ from datetime import date, datetime, timedelta
 
 from flask import jsonify, redirect, render_template, request, url_for
 
+from collections import defaultdict
+
 from blueprints.dashboard import dashboard_bp
+from extensions import db
 from models import Client, Contact, FollowUp
 
 
@@ -193,3 +196,126 @@ def agenda():
         next_week=next_week,
         later=later,
     )
+
+
+@dashboard_bp.route("/quarterly")
+def quarterly():
+    year = request.args.get("year", date.today().year, type=int)
+    return render_template("dashboard/quarterly.html", year=year)
+
+
+@dashboard_bp.route("/api/quarterly-data")
+def api_quarterly_data():
+    """JSON API returning quarterly metrics for a given year."""
+    year = request.args.get("year", date.today().year, type=int)
+    today = date.today()
+
+    # Quarter date ranges
+    quarter_ranges = {
+        1: (date(year, 1, 1), date(year, 3, 31)),
+        2: (date(year, 4, 1), date(year, 6, 30)),
+        3: (date(year, 7, 1), date(year, 9, 30)),
+        4: (date(year, 10, 1), date(year, 12, 31)),
+    }
+
+    quarter_months = {
+        1: ["January", "February", "March"],
+        2: ["April", "May", "June"],
+        3: ["July", "August", "September"],
+        4: ["October", "November", "December"],
+    }
+
+    # Determine current quarter
+    current_quarter = None
+    if year == today.year:
+        current_quarter = (today.month - 1) // 3 + 1
+
+    # Fetch all data for the year in bulk
+    all_contacts = Contact.query.filter(
+        Contact.date >= date(year, 1, 1),
+        Contact.date <= date(year, 12, 31),
+    ).all()
+
+    all_followups = FollowUp.query.filter(
+        FollowUp.due_date >= date(year, 1, 1),
+        FollowUp.due_date <= date(year, 12, 31),
+    ).all()
+
+    max_monthly_activity = 0
+    quarters = {}
+
+    for q_num in range(1, 5):
+        q_start, q_end = quarter_ranges[q_num]
+
+        # Filter to this quarter
+        q_contacts = [c for c in all_contacts if q_start <= c.date <= q_end]
+        q_followups = [f for f in all_followups if q_start <= f.due_date <= q_end]
+
+        # Type breakdown
+        type_breakdown = {"phone": 0, "email": 0, "meeting": 0}
+        for c in q_contacts:
+            if c.contact_type in type_breakdown:
+                type_breakdown[c.contact_type] += 1
+
+        # Priority breakdown
+        priority_breakdown = {"high": 0, "medium": 0, "low": 0}
+        completed = 0
+        pending = 0
+        for f in q_followups:
+            if f.priority in priority_breakdown:
+                priority_breakdown[f.priority] += 1
+            if f.completed:
+                completed += 1
+            else:
+                pending += 1
+
+        # Monthly activity
+        months_data = []
+        start_month = (q_num - 1) * 3 + 1
+        for i in range(3):
+            m = start_month + i
+            m_contacts = sum(1 for c in q_contacts if c.date.month == m)
+            m_followups = sum(1 for f in q_followups if f.due_date.month == m)
+            total = m_contacts + m_followups
+            if total > max_monthly_activity:
+                max_monthly_activity = total
+            months_data.append({
+                "name": quarter_months[q_num][i],
+                "contacts": m_contacts,
+                "followups": m_followups,
+                "total": total,
+            })
+
+        # Top clients by combined activity
+        client_activity = defaultdict(lambda: {"count": 0, "name": ""})
+        for c in q_contacts:
+            client_activity[c.client_id]["count"] += 1
+            client_activity[c.client_id]["name"] = c.client.company_name
+        for f in q_followups:
+            client_activity[f.client_id]["count"] += 1
+            client_activity[f.client_id]["name"] = f.client.company_name
+
+        top_clients = sorted(
+            [{"id": cid, "name": data["name"], "count": data["count"]}
+             for cid, data in client_activity.items()],
+            key=lambda x: x["count"],
+            reverse=True,
+        )[:5]
+
+        quarters[str(q_num)] = {
+            "total_contacts": len(q_contacts),
+            "total_followups": len(q_followups),
+            "completed": completed,
+            "pending": pending,
+            "type_breakdown": type_breakdown,
+            "priority_breakdown": priority_breakdown,
+            "months": months_data,
+            "top_clients": top_clients,
+        }
+
+    return jsonify({
+        "year": year,
+        "current_quarter": current_quarter,
+        "max_monthly_activity": max_monthly_activity or 1,
+        "quarters": quarters,
+    })

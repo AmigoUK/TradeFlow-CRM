@@ -87,7 +87,9 @@
 <script>
 document.addEventListener("DOMContentLoaded", function () {
     var calendarEl = document.getElementById("calendar");
+    var initialDate = new URLSearchParams(window.location.search).get("initialDate") || undefined;
     var calendar = new FullCalendar.Calendar(calendarEl, {
+        initialDate: initialDate,
         initialView: "dayGridMonth",
         headerToolbar: {
             left: "prev,next today",
