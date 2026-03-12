@@ -1,11 +1,28 @@
 from datetime import date, timedelta
 
 from flask import Flask
+from markupsafe import Markup
 
 from config import Config
 from extensions import db
 
-APP_VERSION = "0.11.0-beta"
+APP_VERSION = "0.12.0-beta"
+
+
+def tel_link(value):
+    """Jinja2 filter: render phone number as a clickable tel: link."""
+    if value:
+        safe_value = Markup.escape(value)
+        return Markup(f'<a href="tel:{safe_value}">{safe_value}</a>')
+    return "—"
+
+
+def mailto_link(value):
+    """Jinja2 filter: render email address as a clickable mailto: link."""
+    if value:
+        safe_value = Markup.escape(value)
+        return Markup(f'<a href="mailto:{safe_value}">{safe_value}</a>')
+    return "—"
 
 
 def relative_date(d):
@@ -56,6 +73,8 @@ def create_app():
     # Register Jinja2 template filters and globals
     app.jinja_env.filters["relative_date"] = relative_date
     app.jinja_env.filters["days_overdue"] = days_overdue
+    app.jinja_env.filters["tel_link"] = tel_link
+    app.jinja_env.filters["mailto_link"] = mailto_link
     app.jinja_env.globals["app_version"] = APP_VERSION
 
     from blueprints.dashboard import dashboard_bp

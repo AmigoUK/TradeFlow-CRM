@@ -27,8 +27,8 @@
 
                     <p class="mb-2"><i class="bi bi-person me-2 text-muted"></i><strong>Contact:</strong> {{ client.contact_person or '—' }}</p>
                     <p class="mb-2"><i class="bi bi-briefcase me-2 text-muted"></i><strong>Industry:</strong> {{ client.industry or '—' }}</p>
-                    <p class="mb-2"><i class="bi bi-telephone me-2 text-muted"></i><strong>Phone:</strong> {{ client.phone or '—' }}</p>
-                    <p class="mb-2"><i class="bi bi-envelope me-2 text-muted"></i><strong>Email:</strong> {{ client.email or '—' }}</p>
+                    <p class="mb-2"><i class="bi bi-telephone me-2 text-muted"></i><strong>Phone:</strong> {{ client.phone|tel_link }}</p>
+                    <p class="mb-2"><i class="bi bi-envelope me-2 text-muted"></i><strong>Email:</strong> {{ client.email|mailto_link }}</p>
 
                     <hr>
 
