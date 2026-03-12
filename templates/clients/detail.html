@@ -41,111 +41,101 @@
                 <p><strong>Email:</strong> {{ client.email or '—' }}</p>
             </div>
         </div>
-        <p class="text-muted mb-0">
-            <small>Created {{ client.created_at.strftime('%d %b %Y') }}</small>
-        </p>
+        <hr class="my-2">
+        <div class="row">
+            <div class="col-md-4">
+                <small class="text-muted">Created {{ client.created_at.strftime('%d %b %Y') }}</small>
+            </div>
+            <div class="col-md-4">
+                <small class="text-muted">
+                    Last Contacted:
+                    {% if last_contact %}
+                        <strong>{{ last_contact|relative_date }}</strong>
+                    {% else %}
+                        <span class="text-warning">Never</span>
+                    {% endif %}
+                </small>
+            </div>
+            <div class="col-md-4">
+                <small class="text-muted">
+                    Next Follow-up:
+                    {% if next_followup %}
+                        <strong>{{ next_followup|relative_date }}</strong>
+                    {% else %}
+                        <span>None scheduled</span>
+                    {% endif %}
+                </small>
+            </div>
+        </div>
     </div>
 </div>
 
-<!-- Tabs: Contacts & Follow-ups -->
-<ul class="nav nav-tabs mb-3" role="tablist">
-    <li class="nav-item">
-        <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#contacts-tab" type="button">
-            <i class="bi bi-chat-dots me-1"></i>Interactions ({{ client.contacts|length }})
-        </button>
-    </li>
-    <li class="nav-item">
-        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#followups-tab" type="button">
-            <i class="bi bi-calendar-check me-1"></i>Follow-ups ({{ client.followups|length }})
-        </button>
-    </li>
-</ul>
-
-<div class="tab-content">
-    <!-- Contacts Tab -->
-    <div class="tab-pane fade show active" id="contacts-tab">
-        <a href="{{ url_for('contacts.create_contact', client_id=client.id) }}" class="btn btn-sm btn-outline-primary mb-3">
-            <i class="bi bi-plus-lg me-1"></i>Log Interaction
-        </a>
-        {% if client.contacts %}
-        <div class="table-responsive">
-            <table class="table table-sm">
-                <thead class="table-light">
-                    <tr>
-                        <th>Date</th>
-                        <th>Type</th>
-                        <th>Notes</th>
-                        <th>Outcome</th>
-                        <th class="text-end">Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for contact in client.contacts|sort(attribute='date', reverse=true) %}
-                    <tr>
-                        <td>{{ contact.date.strftime('%d %b %Y') }}</td>
-                        <td><span class="badge badge-{{ contact.contact_type }}">{{ contact.contact_type|capitalize }}</span></td>
-                        <td>{{ contact.notes[:80] }}{% if contact.notes|length > 80 %}...{% endif %}</td>
-                        <td>{{ contact.outcome or '—' }}</td>
-                        <td class="text-end">
-                            <a href="{{ url_for('contacts.edit_contact', id=contact.id) }}" class="btn btn-sm btn-outline-secondary">
-                                <i class="bi bi-pencil"></i>
-                            </a>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-        {% else %}
-        <p class="text-muted">No interactions logged yet.</p>
-        {% endif %}
-    </div>
-
-    <!-- Follow-ups Tab -->
-    <div class="tab-pane fade" id="followups-tab">
-        <a href="{{ url_for('followups.create_followup', client_id=client.id) }}" class="btn btn-sm btn-outline-primary mb-3">
-            <i class="bi bi-plus-lg me-1"></i>Add Follow-up
-        </a>
-        {% if client.followups %}
-        <div class="table-responsive">
-            <table class="table table-sm">
-                <thead class="table-light">
-                    <tr>
-                        <th>Due Date</th>
-                        <th>Priority</th>
-                        <th>Notes</th>
-                        <th>Status</th>
-                        <th class="text-end">Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for fu in client.followups|sort(attribute='due_date') %}
-                    <tr class="{% if fu.is_overdue %}overdue{% endif %}">
-                        <td>{{ fu.due_date.strftime('%d %b %Y') }}</td>
-                        <td><span class="badge badge-{{ fu.priority }}">{{ fu.priority|capitalize }}</span></td>
-                        <td>{{ fu.notes[:80] }}{% if fu.notes|length > 80 %}...{% endif %}</td>
-                        <td>
-                            {% if fu.completed %}
-                                <span class="badge bg-success">Completed</span>
-                            {% elif fu.is_overdue %}
-                                <span class="badge bg-danger">Overdue</span>
-                            {% else %}
-                                <span class="badge bg-secondary">Pending</span>
-                            {% endif %}
-                        </td>
-                        <td class="text-end">
-                            <a href="{{ url_for('followups.edit_followup', id=fu.id) }}" class="btn btn-sm btn-outline-secondary">
-                                <i class="bi bi-pencil"></i>
-                            </a>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-        {% else %}
-        <p class="text-muted">No follow-ups scheduled yet.</p>
-        {% endif %}
-    </div>
+<!-- Quick-add buttons -->
+<div class="d-flex gap-2 mb-4">
+    <a href="{{ url_for('contacts.create_contact', client_id=client.id) }}" class="btn btn-sm btn-outline-primary">
+        <i class="bi bi-chat-dots me-1"></i>Log Interaction
+    </a>
+    <a href="{{ url_for('followups.create_followup', client_id=client.id) }}" class="btn btn-sm btn-outline-primary">
+        <i class="bi bi-calendar-check me-1"></i>Add Follow-up
+    </a>
 </div>
+
+<!-- Activity Timeline -->
+<h5 class="mb-3"><i class="bi bi-clock-history me-1"></i>Activity Timeline</h5>
+
+{% if timeline %}
+<div class="timeline">
+    {% for item in timeline %}
+    <div class="timeline-item {% if item.type == 'followup' and item.is_overdue %}timeline-overdue{% endif %}">
+        <div class="timeline-icon">
+            <i class="bi {{ item.icon }}"></i>
+        </div>
+        <div class="timeline-content">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <span class="badge {{ item.badge_class }} me-1">{{ item.badge_text }}</span>
+                    <small class="text-muted">{{ item.date|relative_date }}</small>
+                    {% if item.type == 'followup' %}
+                        {% if item.completed %}
+                            <span class="badge bg-success ms-1">Completed</span>
+                        {% elif item.is_overdue %}
+                            <span class="badge bg-danger ms-1">Overdue</span>
+                        {% else %}
+                            <span class="badge bg-secondary ms-1">Pending</span>
+                        {% endif %}
+                    {% endif %}
+                </div>
+                <div class="d-flex gap-1">
+                    {% if item.type == 'followup' and not item.completed %}
+                    <form method="POST" action="{{ item.complete_url }}" class="d-inline">
+                        <button type="submit" class="btn btn-sm btn-outline-success" title="Mark complete">
+                            <i class="bi bi-check-lg"></i>
+                        </button>
+                    </form>
+                    {% endif %}
+                    <a href="{{ item.edit_url }}" class="btn btn-sm btn-outline-secondary" title="Edit">
+                        <i class="bi bi-pencil"></i>
+                    </a>
+                </div>
+            </div>
+            {% if item.notes %}
+                <p class="mb-0 mt-1">{{ item.notes }}</p>
+            {% endif %}
+            {% if item.type == 'contact' and item.outcome %}
+                <small class="text-muted"><strong>Outcome:</strong> {{ item.outcome }}</small>
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="empty-state">
+    <i class="bi bi-clock-history d-block"></i>
+    <h5>No activity yet</h5>
+    <p>
+        <a href="{{ url_for('contacts.create_contact', client_id=client.id) }}">Log an interaction</a> or
+        <a href="{{ url_for('followups.create_followup', client_id=client.id) }}">schedule a follow-up</a> to get started.
+    </p>
+</div>
+{% endif %}
 {% endblock %}
