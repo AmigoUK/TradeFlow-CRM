@@ -5,6 +5,8 @@ from flask import Flask
 from config import Config
 from extensions import db
 
+APP_VERSION = "0.1.0-beta"
+
 
 def relative_date(d):
     """Jinja2 filter: render a date relative to today."""
@@ -51,9 +53,10 @@ def create_app():
 
     db.init_app(app)
 
-    # Register Jinja2 template filters
+    # Register Jinja2 template filters and globals
     app.jinja_env.filters["relative_date"] = relative_date
     app.jinja_env.filters["days_overdue"] = days_overdue
+    app.jinja_env.globals["app_version"] = APP_VERSION
 
     from blueprints.dashboard import dashboard_bp
     from blueprints.clients import clients_bp

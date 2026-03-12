@@ -1,4 +1,4 @@
-/* TradeFlow CRM — Delete confirmation modal handler + toast notifications */
+/* NextStep CRM — Delete confirmation modal handler + toast notifications */
 
 document.addEventListener("DOMContentLoaded", function () {
     /* Delete modal */

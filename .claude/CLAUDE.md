@@ -1,4 +1,4 @@
-# TradeFlow CRM — Project Instructions
+# NextStep CRM — Project Instructions
 
 ## Overview
 Mini CRM web application — Flask 3.1 + SQLAlchemy 2.0 + Bootstrap 5 + SQLite.
@@ -26,7 +26,7 @@ Portfolio project for junior developer showcase.
 - Branch: `main` only
 - Commit after each major feature
 - Push immediately after each commit
-- Repo: `AmigoUK/TradeFlow-CRM` (public)
+- Repo: `AmigoUK/NextStep-CRM`
 
 ## Key Patterns
 - Constants (statuses, types, priorities) live alongside their model

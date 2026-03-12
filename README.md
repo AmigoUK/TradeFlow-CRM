@@ -1,4 +1,4 @@
-# TradeFlow CRM
+# NextStep CRM
 
 A lightweight CRM (Customer Relationship Management) web application built with Flask and Bootstrap 5. Manage clients, log interaction history, schedule follow-ups, and track overdue tasks from a single dashboard.
 
@@ -21,8 +21,8 @@ A lightweight CRM (Customer Relationship Management) web application built with 
 
 ```bash
 # Clone the repository
-git clone https://github.com/AmigoUK/TradeFlow-CRM.git
-cd TradeFlow-CRM
+git clone https://github.com/AmigoUK/NextStep-CRM.git
+cd NextStep-CRM
 
 # Create and activate a virtual environment
 python3 -m venv venv
@@ -48,7 +48,7 @@ python3 seed.py
 ## Project Structure
 
 ```
-TradeFlow-CRM/
+NextStep-CRM/
 ├── .gitignore
 ├── README.md
 ├── requirements.txt
