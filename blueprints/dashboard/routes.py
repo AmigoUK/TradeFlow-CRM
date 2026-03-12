@@ -76,10 +76,14 @@ def api_events():
     for fu in followups:
         colour = "#6c757d" if fu.completed else priority_colours.get(fu.priority, "#0d6efd")
         text_colour = "#000" if fu.priority == "medium" and not fu.completed else "#fff"
+        if fu.due_time:
+            start_val = f"{fu.due_date.isoformat()}T{fu.due_time.strftime('%H:%M:%S')}"
+        else:
+            start_val = fu.due_date.isoformat()
         events.append({
             "id": f"followup-{fu.id}",
             "title": f"{'✓ ' if fu.completed else ''}{fu.client.company_name}",
-            "start": fu.due_date.isoformat(),
+            "start": start_val,
             "backgroundColor": colour,
             "borderColor": colour,
             "textColor": text_colour,
@@ -89,6 +93,7 @@ def api_events():
                 "priority": fu.priority,
                 "completed": fu.completed,
                 "notes": fu.notes[:100] if fu.notes else "",
+                "time": fu.due_time.strftime("%H:%M") if fu.due_time else None,
             },
         })
 
@@ -100,10 +105,14 @@ def api_events():
     ).all()
     for c in contacts:
         colour = type_colours.get(c.contact_type, "#0d6efd")
+        if c.time:
+            start_val = f"{c.date.isoformat()}T{c.time.strftime('%H:%M:%S')}"
+        else:
+            start_val = c.date.isoformat()
         events.append({
             "id": f"contact-{c.id}",
             "title": f"{c.contact_type.capitalize()}: {c.client.company_name}",
-            "start": c.date.isoformat(),
+            "start": start_val,
             "backgroundColor": colour,
             "borderColor": colour,
             "textColor": "#fff",
@@ -112,6 +121,7 @@ def api_events():
                 "clientId": c.client_id,
                 "contactType": c.contact_type,
                 "notes": c.notes[:100] if c.notes else "",
+                "time": c.time.strftime("%H:%M") if c.time else None,
             },
         })
 

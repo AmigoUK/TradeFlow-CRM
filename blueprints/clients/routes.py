@@ -106,6 +106,7 @@ def detail_client(id):
         timeline.append({
             "type": "contact",
             "date": c.date,
+            "time": c.time,
             "icon": "bi-chat-dots",
             "badge_class": f"badge-{c.contact_type}",
             "badge_text": c.contact_type.capitalize(),
@@ -118,6 +119,7 @@ def detail_client(id):
         timeline.append({
             "type": "followup",
             "date": fu.due_date,
+            "time": fu.due_time,
             "icon": "bi-calendar-check",
             "badge_class": f"badge-{fu.priority}",
             "badge_text": fu.priority.capitalize(),

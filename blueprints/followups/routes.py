@@ -54,9 +54,18 @@ def create_followup():
         except ValueError:
             parsed_date = date.today()
 
+        due_time_str = request.form.get("due_time", "").strip()
+        parsed_time = None
+        if due_time_str:
+            try:
+                parsed_time = datetime.strptime(due_time_str, "%H:%M").time()
+            except ValueError:
+                pass
+
         followup = FollowUp(
             client_id=int(client_id),
             due_date=parsed_date,
+            due_time=parsed_time,
             priority=priority,
             notes=request.form.get("notes", "").strip(),
         )
@@ -101,6 +110,15 @@ def edit_followup(id):
             followup.due_date = datetime.strptime(due_date_str, "%Y-%m-%d").date() if due_date_str else date.today()
         except ValueError:
             followup.due_date = date.today()
+
+        due_time_str = request.form.get("due_time", "").strip()
+        if due_time_str:
+            try:
+                followup.due_time = datetime.strptime(due_time_str, "%H:%M").time()
+            except ValueError:
+                followup.due_time = None
+        else:
+            followup.due_time = None
 
         followup.client_id = int(client_id)
         followup.priority = request.form.get("priority", "medium")

@@ -121,6 +121,10 @@ document.addEventListener("DOMContentLoaded", function () {
                 info.el.title = props.notes;
             }
         },
+        slotMinTime: "07:00:00",
+        slotMaxTime: "20:00:00",
+        defaultTimedEventDuration: "01:00:00",
+        eventTimeFormat: { hour: "2-digit", minute: "2-digit", hour12: false },
         height: "auto",
         firstDay: 1
     });

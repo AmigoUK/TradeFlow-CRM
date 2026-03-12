@@ -29,12 +29,17 @@
             </div>
 
             <div class="row">
-                <div class="col-md-6 mb-3">
+                <div class="col-md-4 mb-3">
                     <label for="date" class="form-label">Date</label>
                     <input type="date" class="form-control" id="date" name="date"
                            value="{{ contact.date.isoformat() if contact else today }}">
                 </div>
-                <div class="col-md-6 mb-3">
+                <div class="col-md-4 mb-3">
+                    <label for="time" class="form-label">Time <small class="text-muted">(optional)</small></label>
+                    <input type="time" class="form-control" id="time" name="time"
+                           value="{{ contact.time.strftime('%H:%M') if contact and contact.time else '' }}">
+                </div>
+                <div class="col-md-4 mb-3">
                     <label for="contact_type" class="form-label">Type</label>
                     <select class="form-select" id="contact_type" name="contact_type">
                         {% for t in contact_types %}

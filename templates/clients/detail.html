@@ -95,6 +95,9 @@
                 <div>
                     <span class="badge {{ item.badge_class }} me-1">{{ item.badge_text }}</span>
                     <small class="text-muted">{{ item.date|relative_date }}</small>
+                    {% if item.time %}
+                        <small class="text-muted"><i class="bi bi-clock me-1"></i>{{ item.time.strftime('%H:%M') }}</small>
+                    {% endif %}
                     {% if item.type == 'followup' %}
                         {% if item.completed %}
                             <span class="badge bg-success ms-1">Completed</span>

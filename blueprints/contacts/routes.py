@@ -55,9 +55,18 @@ def create_contact():
         except ValueError:
             parsed_date = date.today()
 
+        time_str = request.form.get("time", "").strip()
+        parsed_time = None
+        if time_str:
+            try:
+                parsed_time = datetime.strptime(time_str, "%H:%M").time()
+            except ValueError:
+                pass
+
         contact = Contact(
             client_id=int(client_id),
             date=parsed_date,
+            time=parsed_time,
             contact_type=contact_type,
             notes=request.form.get("notes", "").strip(),
             outcome=request.form.get("outcome", "").strip(),
@@ -103,6 +112,15 @@ def edit_contact(id):
             contact.date = datetime.strptime(contact_date, "%Y-%m-%d").date() if contact_date else date.today()
         except ValueError:
             contact.date = date.today()
+
+        time_str = request.form.get("time", "").strip()
+        if time_str:
+            try:
+                contact.time = datetime.strptime(time_str, "%H:%M").time()
+            except ValueError:
+                contact.time = None
+        else:
+            contact.time = None
 
         contact.client_id = int(client_id)
         contact.contact_type = request.form.get("contact_type", "phone")

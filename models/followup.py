@@ -13,6 +13,7 @@ class FollowUp(db.Model):
         db.Integer, db.ForeignKey("clients.id"), nullable=False
     )
     due_date = db.Column(db.Date, nullable=False, default=date.today)
+    due_time = db.Column(db.Time, nullable=True, default=None)
     priority = db.Column(db.String(10), nullable=False, default="medium")
     completed = db.Column(db.Boolean, default=False)
     notes = db.Column(db.Text, default="")

@@ -13,6 +13,7 @@ class Contact(db.Model):
         db.Integer, db.ForeignKey("clients.id"), nullable=False
     )
     date = db.Column(db.Date, nullable=False, default=date.today)
+    time = db.Column(db.Time, nullable=True, default=None)
     contact_type = db.Column(db.String(20), nullable=False, default="phone")
     notes = db.Column(db.Text, default="")
     outcome = db.Column(db.String(200), default="")
