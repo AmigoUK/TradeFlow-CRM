@@ -55,7 +55,8 @@ document.addEventListener("DOMContentLoaded", function () {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
-                    "X-Requested-With": "XMLHttpRequest"
+                    "X-Requested-With": "XMLHttpRequest",
+                    "X-CSRFToken": getCsrfToken()
                 },
                 body: JSON.stringify({ theme: theme })
             })
@@ -71,6 +72,68 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     });
 
+    /* UI Preferences toggle handlers */
+    document.querySelectorAll(".ui-pref-toggle").forEach(function (toggle) {
+        toggle.addEventListener("change", function () {
+            var pref = this.getAttribute("data-pref");
+            var payload = {};
+            payload[pref] = this.checked;
+
+            /* Enable/disable page size selector when pagination toggles */
+            if (pref === "pagination_enabled") {
+                var pageSize = document.getElementById("prefPageSize");
+                if (pageSize) {
+                    pageSize.disabled = !this.checked;
+                }
+            }
+
+            fetch("/settings/ui-preferences", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-Requested-With": "XMLHttpRequest",
+                    "X-CSRFToken": getCsrfToken()
+                },
+                body: JSON.stringify(payload)
+            })
+            .then(function (resp) { return resp.json(); })
+            .then(function (data) {
+                if (data.ok) {
+                    window.showToast("UI preference updated.", "success");
+                }
+            })
+            .catch(function () {
+                toggle.checked = !toggle.checked;
+                window.showToast("Failed to save preference.", "danger");
+            });
+        });
+    });
+
+    /* Page size selector handler */
+    var pageSizeSelect = document.getElementById("prefPageSize");
+    if (pageSizeSelect) {
+        pageSizeSelect.addEventListener("change", function () {
+            fetch("/settings/ui-preferences", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-Requested-With": "XMLHttpRequest",
+                    "X-CSRFToken": getCsrfToken()
+                },
+                body: JSON.stringify({ pagination_size: parseInt(this.value, 10) })
+            })
+            .then(function (resp) { return resp.json(); })
+            .then(function (data) {
+                if (data.ok) {
+                    window.showToast("Page size updated.", "success");
+                }
+            })
+            .catch(function () {
+                window.showToast("Failed to save page size.", "danger");
+            });
+        });
+    }
+
     /* Quick function toggle switch AJAX handler */
     document.querySelectorAll(".settings-toggle").forEach(function (toggle) {
         toggle.addEventListener("change", function () {
@@ -79,7 +142,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
             fetch(url, {
                 method: "POST",
-                headers: { "X-Requested-With": "XMLHttpRequest" }
+                headers: { "X-Requested-With": "XMLHttpRequest", "X-CSRFToken": getCsrfToken() }
             })
             .then(function (resp) { return resp.json(); })
             .then(function (data) {

@@ -23,6 +23,7 @@
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                 <form id="qfForm" method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <input type="hidden" name="action_id" id="qfActionId">
                     <button type="submit" class="btn btn-primary" id="qfConfirmBtn">
                         <i class="bi bi-check-lg me-1"></i>Confirm

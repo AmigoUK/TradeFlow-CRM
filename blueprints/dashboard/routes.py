@@ -1,6 +1,7 @@
 from datetime import date, datetime, timedelta
 
 from flask import jsonify, redirect, render_template, request, url_for
+from flask_login import current_user, login_required
 
 from collections import defaultdict
 
@@ -9,36 +10,47 @@ from extensions import db
 from models import Client, Contact, FollowUp, InteractionType
 
 
+def _ownership_filter(query, model):
+    """Filter query by ownership — managers/admins see all, users see only own."""
+    if current_user.has_role_at_least("manager"):
+        return query
+    return query.filter(model.user_id == current_user.id)
+
+
 @dashboard_bp.route("/")
+@login_required
 def index():
     return redirect(url_for("dashboard.dashboard"))
 
 
 @dashboard_bp.route("/dashboard")
+@login_required
 def dashboard():
     today = date.today()
 
     # Stats
-    active_clients = Client.query.filter(Client.status == "active").count()
-    total_clients = Client.query.count()
+    client_q = Client.query
+    if not current_user.has_role_at_least("manager"):
+        client_q = client_q.filter(Client.user_id == current_user.id)
 
-    due_today = FollowUp.query.filter(
+    active_clients = client_q.filter(Client.status == "active").count()
+    total_clients = client_q.count()
+
+    due_today_q = FollowUp.query.filter(
         FollowUp.due_date == today,
         FollowUp.completed == False,  # noqa: E712
-    ).all()
+    )
+    due_today = _ownership_filter(due_today_q, FollowUp).all()
 
-    overdue = FollowUp.query.filter(
+    overdue_q = FollowUp.query.filter(
         FollowUp.due_date < today,
         FollowUp.completed == False,  # noqa: E712
-    ).all()
+    )
+    overdue = _ownership_filter(overdue_q, FollowUp).all()
 
     # Recent interactions (last 5)
-    recent_contacts = (
-        Contact.query
-        .order_by(Contact.date.desc(), Contact.created_at.desc())
-        .limit(5)
-        .all()
-    )
+    recent_q = Contact.query.order_by(Contact.date.desc(), Contact.created_at.desc())
+    recent_contacts = _ownership_filter(recent_q, Contact).limit(5).all()
 
     return render_template(
         "dashboard/index.html",
@@ -51,11 +63,13 @@ def dashboard():
 
 
 @dashboard_bp.route("/calendar")
+@login_required
 def calendar():
     return render_template("dashboard/calendar.html")
 
 
 @dashboard_bp.route("/api/events")
+@login_required
 def api_events():
     """JSON feed for FullCalendar — follow-ups + contacts colour-coded."""
     start_str = request.args.get("start", "")
@@ -72,10 +86,11 @@ def api_events():
 
     # Follow-ups — colour by priority
     priority_colours = {"high": "#dc3545", "medium": "#ffc107", "low": "#198754"}
-    followups = FollowUp.query.filter(
+    followups_q = FollowUp.query.filter(
         FollowUp.due_date >= start_date,
         FollowUp.due_date <= end_date,
-    ).all()
+    )
+    followups = _ownership_filter(followups_q, FollowUp).all()
     for fu in followups:
         colour = "#6c757d" if fu.completed else priority_colours.get(fu.priority, "#0d6efd")
         text_colour = "#000" if fu.priority == "medium" and not fu.completed else "#fff"
@@ -102,10 +117,11 @@ def api_events():
 
     # Contacts — colour by type
     type_colours = {t.label: t.colour for t in InteractionType.query.all()}
-    contacts = Contact.query.filter(
+    contacts_q = Contact.query.filter(
         Contact.date >= start_date,
         Contact.date <= end_date,
-    ).all()
+    )
+    contacts = _ownership_filter(contacts_q, Contact).all()
     for c in contacts:
         colour = type_colours.get(c.contact_type, "#0d6efd")
         if c.time:
@@ -132,6 +148,7 @@ def api_events():
 
 
 @dashboard_bp.route("/agenda")
+@login_required
 def agenda():
     """Daily planner view — follow-ups grouped by time horizon."""
     today = date.today()
@@ -141,50 +158,55 @@ def agenda():
     end_next_week = start_next_week + timedelta(days=6)
     later_end = today + timedelta(days=60)
 
+    def _fq(extra_filters):
+        q = FollowUp.query
+        for f in extra_filters:
+            q = q.filter(f)
+        return _ownership_filter(q, FollowUp)
+
     # Overdue
-    overdue = FollowUp.query.filter(
+    overdue = _fq([
         FollowUp.due_date < today,
         FollowUp.completed == False,  # noqa: E712
-    ).order_by(FollowUp.due_date).all()
+    ]).order_by(FollowUp.due_date).all()
 
     # Today
-    today_followups = FollowUp.query.filter(
+    today_followups = _fq([
         FollowUp.due_date == today,
         FollowUp.completed == False,  # noqa: E712
-    ).order_by(FollowUp.due_date).all()
+    ]).order_by(FollowUp.due_date).all()
 
     # Today's interactions
-    today_contacts = Contact.query.filter(
-        Contact.date == today,
-    ).order_by(Contact.created_at.desc()).all()
+    today_contacts_q = Contact.query.filter(Contact.date == today)
+    today_contacts = _ownership_filter(today_contacts_q, Contact).order_by(Contact.created_at.desc()).all()
 
     # Tomorrow
-    tomorrow_followups = FollowUp.query.filter(
+    tomorrow_followups = _fq([
         FollowUp.due_date == tomorrow,
         FollowUp.completed == False,  # noqa: E712
-    ).all()
+    ]).all()
 
     # This week (day after tomorrow through end of week)
     day_after_tomorrow = tomorrow + timedelta(days=1)
-    this_week = FollowUp.query.filter(
+    this_week = _fq([
         FollowUp.due_date >= day_after_tomorrow,
         FollowUp.due_date <= end_of_week,
         FollowUp.completed == False,  # noqa: E712
-    ).order_by(FollowUp.due_date).all()
+    ]).order_by(FollowUp.due_date).all()
 
     # Next week
-    next_week = FollowUp.query.filter(
+    next_week = _fq([
         FollowUp.due_date >= start_next_week,
         FollowUp.due_date <= end_next_week,
         FollowUp.completed == False,  # noqa: E712
-    ).order_by(FollowUp.due_date).all()
+    ]).order_by(FollowUp.due_date).all()
 
     # Later (beyond next week, up to 60 days)
-    later = FollowUp.query.filter(
+    later = _fq([
         FollowUp.due_date > end_next_week,
         FollowUp.due_date <= later_end,
         FollowUp.completed == False,  # noqa: E712
-    ).order_by(FollowUp.due_date).all()
+    ]).order_by(FollowUp.due_date).all()
 
     return render_template(
         "dashboard/agenda.html",
@@ -199,12 +221,14 @@ def agenda():
 
 
 @dashboard_bp.route("/quarterly")
+@login_required
 def quarterly():
     year = request.args.get("year", date.today().year, type=int)
     return render_template("dashboard/quarterly.html", year=year)
 
 
 @dashboard_bp.route("/api/quarterly-data")
+@login_required
 def api_quarterly_data():
     """JSON API returning quarterly metrics for a given year."""
     year = request.args.get("year", date.today().year, type=int)
@@ -230,16 +254,18 @@ def api_quarterly_data():
     if year == today.year:
         current_quarter = (today.month - 1) // 3 + 1
 
-    # Fetch all data for the year in bulk
-    all_contacts = Contact.query.filter(
+    # Fetch all data for the year in bulk (with ownership filter)
+    contacts_q = Contact.query.filter(
         Contact.date >= date(year, 1, 1),
         Contact.date <= date(year, 12, 31),
-    ).all()
+    )
+    all_contacts = _ownership_filter(contacts_q, Contact).all()
 
-    all_followups = FollowUp.query.filter(
+    followups_q = FollowUp.query.filter(
         FollowUp.due_date >= date(year, 1, 1),
         FollowUp.due_date <= date(year, 12, 31),
-    ).all()
+    )
+    all_followups = _ownership_filter(followups_q, FollowUp).all()
 
     # Build dynamic type breakdown keys from all interaction types
     all_interaction_types = InteractionType.query.all()

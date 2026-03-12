@@ -2,9 +2,13 @@ import re
 
 from flask import flash, jsonify, redirect, render_template, request, url_for
 
+from blueprints.auth.decorators import role_required
 from blueprints.settings import settings_bp
 from extensions import db
-from models import QuickFunction, AppSettings, InteractionType, Contact, CustomFieldDefinition
+from models import (
+    QuickFunction, AppSettings, InteractionType, Contact, CustomFieldDefinition,
+    AttachmentCategory, AttachmentTag, Attachment,
+)
 
 
 def _is_ajax():
@@ -12,6 +16,7 @@ def _is_ajax():
 
 
 @settings_bp.route("/")
+@role_required("admin")
 def settings_page():
     quick_functions = QuickFunction.query.order_by(
         QuickFunction.sort_order, QuickFunction.id
@@ -22,12 +27,20 @@ def settings_page():
     custom_fields = CustomFieldDefinition.query.order_by(
         CustomFieldDefinition.sort_order, CustomFieldDefinition.id
     ).all()
+    attachment_categories = AttachmentCategory.query.order_by(
+        AttachmentCategory.sort_order, AttachmentCategory.id
+    ).all()
+    attachment_tags = AttachmentTag.query.order_by(
+        AttachmentTag.sort_order, AttachmentTag.id
+    ).all()
     settings = AppSettings.get()
     return render_template(
         "settings/index.html",
         quick_functions=quick_functions,
         interaction_types=interaction_types,
         custom_fields=custom_fields,
+        attachment_categories=attachment_categories,
+        attachment_tags=attachment_tags,
         settings=settings,
     )
 
@@ -35,6 +48,7 @@ def settings_page():
 # ── Quick Functions ──────────────────────────────────────────────
 
 @settings_bp.route("/quick-functions/new", methods=["POST"])
+@role_required("admin")
 def create_quick_function():
     label = request.form.get("label", "").strip()
     if not label:
@@ -62,6 +76,7 @@ def create_quick_function():
 
 
 @settings_bp.route("/quick-functions/<int:id>/edit", methods=["POST"])
+@role_required("admin")
 def edit_quick_function(id):
     qf = db.get_or_404(QuickFunction, id)
 
@@ -85,6 +100,7 @@ def edit_quick_function(id):
 
 
 @settings_bp.route("/quick-functions/<int:id>/toggle", methods=["POST"])
+@role_required("admin")
 def toggle_quick_function(id):
     qf = db.get_or_404(QuickFunction, id)
     qf.is_active = not qf.is_active
@@ -99,6 +115,7 @@ def toggle_quick_function(id):
 
 
 @settings_bp.route("/quick-functions/<int:id>/delete", methods=["POST"])
+@role_required("admin")
 def delete_quick_function(id):
     qf = db.get_or_404(QuickFunction, id)
     label = qf.label
@@ -115,6 +132,7 @@ def _validate_colour(colour):
 
 
 @settings_bp.route("/interaction-types/new", methods=["POST"])
+@role_required("admin")
 def create_interaction_type():
     label = request.form.get("label", "").strip().lower()
     if not label:
@@ -148,6 +166,7 @@ def create_interaction_type():
 
 
 @settings_bp.route("/interaction-types/<int:id>/edit", methods=["POST"])
+@role_required("admin")
 def edit_interaction_type(id):
     it = db.get_or_404(InteractionType, id)
 
@@ -182,6 +201,7 @@ def edit_interaction_type(id):
 
 
 @settings_bp.route("/interaction-types/<int:id>/toggle", methods=["POST"])
+@role_required("admin")
 def toggle_interaction_type(id):
     it = db.get_or_404(InteractionType, id)
     it.is_active = not it.is_active
@@ -196,6 +216,7 @@ def toggle_interaction_type(id):
 
 
 @settings_bp.route("/interaction-types/<int:id>/delete", methods=["POST"])
+@role_required("admin")
 def delete_interaction_type(id):
     it = db.get_or_404(InteractionType, id)
 
@@ -215,6 +236,7 @@ def delete_interaction_type(id):
 # ── Custom Fields ────────────────────────────────────────────────
 
 @settings_bp.route("/custom-fields/new", methods=["POST"])
+@role_required("admin")
 def create_custom_field():
     label = request.form.get("label", "").strip()
     if not label:
@@ -244,6 +266,7 @@ def create_custom_field():
 
 
 @settings_bp.route("/custom-fields/<int:id>/edit", methods=["POST"])
+@role_required("admin")
 def edit_custom_field(id):
     cf = db.get_or_404(CustomFieldDefinition, id)
 
@@ -269,6 +292,7 @@ def edit_custom_field(id):
 
 
 @settings_bp.route("/custom-fields/<int:id>/toggle", methods=["POST"])
+@role_required("admin")
 def toggle_custom_field(id):
     cf = db.get_or_404(CustomFieldDefinition, id)
     cf.is_active = not cf.is_active
@@ -283,6 +307,7 @@ def toggle_custom_field(id):
 
 
 @settings_bp.route("/custom-fields/<int:id>/delete", methods=["POST"])
+@role_required("admin")
 def delete_custom_field(id):
     cf = db.get_or_404(CustomFieldDefinition, id)
     label = cf.label
@@ -294,7 +319,211 @@ def delete_custom_field(id):
 
 # ── Theme ────────────────────────────────────────────────────────
 
+# ── Attachment Categories ────────────────────────────────────────
+
+@settings_bp.route("/attachment-categories/new", methods=["POST"])
+@role_required("admin")
+def create_attachment_category():
+    label = request.form.get("label", "").strip()
+    if not label:
+        flash("Label is required.", "danger")
+        return redirect(url_for("settings.settings_page"))
+
+    if AttachmentCategory.query.filter_by(label=label).first():
+        flash(f"Attachment category '{label}' already exists.", "danger")
+        return redirect(url_for("settings.settings_page"))
+
+    icon = request.form.get("icon", "bi-folder").strip()
+    if not icon.startswith("bi-"):
+        icon = "bi-" + icon
+
+    colour = request.form.get("colour", "#6c757d").strip()
+    if not _validate_colour(colour):
+        colour = "#6c757d"
+
+    max_order = db.session.query(db.func.max(AttachmentCategory.sort_order)).scalar() or 0
+
+    ac = AttachmentCategory(
+        label=label,
+        icon=icon,
+        colour=colour,
+        sort_order=max_order + 1,
+    )
+    db.session.add(ac)
+    db.session.commit()
+    flash(f"Attachment category '{ac.label}' created.", "success")
+    return redirect(url_for("settings.settings_page"))
+
+
+@settings_bp.route("/attachment-categories/<int:id>/edit", methods=["POST"])
+@role_required("admin")
+def edit_attachment_category(id):
+    ac = db.get_or_404(AttachmentCategory, id)
+
+    label = request.form.get("label", "").strip()
+    if not label:
+        flash("Label is required.", "danger")
+        return redirect(url_for("settings.settings_page"))
+
+    if label != ac.label:
+        existing = AttachmentCategory.query.filter_by(label=label).first()
+        if existing:
+            flash(f"Attachment category '{label}' already exists.", "danger")
+            return redirect(url_for("settings.settings_page"))
+
+    icon = request.form.get("icon", ac.icon).strip()
+    if not icon.startswith("bi-"):
+        icon = "bi-" + icon
+
+    colour = request.form.get("colour", ac.colour).strip()
+    if not _validate_colour(colour):
+        colour = ac.colour
+
+    ac.label = label
+    ac.icon = icon
+    ac.colour = colour
+    db.session.commit()
+    flash(f"Attachment category '{ac.label}' updated.", "success")
+    return redirect(url_for("settings.settings_page"))
+
+
+@settings_bp.route("/attachment-categories/<int:id>/toggle", methods=["POST"])
+@role_required("admin")
+def toggle_attachment_category(id):
+    ac = db.get_or_404(AttachmentCategory, id)
+    ac.is_active = not ac.is_active
+    db.session.commit()
+
+    state = "activated" if ac.is_active else "deactivated"
+    if _is_ajax():
+        return jsonify({"ok": True, "is_active": ac.is_active, "message": f"'{ac.label}' {state}."})
+
+    flash(f"'{ac.label}' {state}.", "success")
+    return redirect(url_for("settings.settings_page"))
+
+
+@settings_bp.route("/attachment-categories/<int:id>/delete", methods=["POST"])
+@role_required("admin")
+def delete_attachment_category(id):
+    ac = db.get_or_404(AttachmentCategory, id)
+    label = ac.label
+
+    # SET NULL on attachments using this category
+    Attachment.query.filter_by(category_id=ac.id).update({"category_id": None})
+    db.session.delete(ac)
+    db.session.commit()
+    flash(f"Attachment category '{label}' deleted.", "success")
+    return redirect(url_for("settings.settings_page"))
+
+
+# ── Attachment Tags ─────────────────────────────────────────────
+
+@settings_bp.route("/attachment-tags/new", methods=["POST"])
+@role_required("admin")
+def create_attachment_tag():
+    label = request.form.get("label", "").strip()
+    if not label:
+        flash("Label is required.", "danger")
+        return redirect(url_for("settings.settings_page"))
+
+    if AttachmentTag.query.filter_by(label=label).first():
+        flash(f"Attachment tag '{label}' already exists.", "danger")
+        return redirect(url_for("settings.settings_page"))
+
+    colour = request.form.get("colour", "#6c757d").strip()
+    if not _validate_colour(colour):
+        colour = "#6c757d"
+
+    max_order = db.session.query(db.func.max(AttachmentTag.sort_order)).scalar() or 0
+
+    at = AttachmentTag(
+        label=label,
+        colour=colour,
+        sort_order=max_order + 1,
+    )
+    db.session.add(at)
+    db.session.commit()
+    flash(f"Attachment tag '{at.label}' created.", "success")
+    return redirect(url_for("settings.settings_page"))
+
+
+@settings_bp.route("/attachment-tags/<int:id>/edit", methods=["POST"])
+@role_required("admin")
+def edit_attachment_tag(id):
+    at = db.get_or_404(AttachmentTag, id)
+
+    label = request.form.get("label", "").strip()
+    if not label:
+        flash("Label is required.", "danger")
+        return redirect(url_for("settings.settings_page"))
+
+    if label != at.label:
+        existing = AttachmentTag.query.filter_by(label=label).first()
+        if existing:
+            flash(f"Attachment tag '{label}' already exists.", "danger")
+            return redirect(url_for("settings.settings_page"))
+
+    colour = request.form.get("colour", at.colour).strip()
+    if not _validate_colour(colour):
+        colour = at.colour
+
+    at.label = label
+    at.colour = colour
+    db.session.commit()
+    flash(f"Attachment tag '{at.label}' updated.", "success")
+    return redirect(url_for("settings.settings_page"))
+
+
+@settings_bp.route("/attachment-tags/<int:id>/toggle", methods=["POST"])
+@role_required("admin")
+def toggle_attachment_tag(id):
+    at = db.get_or_404(AttachmentTag, id)
+    at.is_active = not at.is_active
+    db.session.commit()
+
+    state = "activated" if at.is_active else "deactivated"
+    if _is_ajax():
+        return jsonify({"ok": True, "is_active": at.is_active, "message": f"'{at.label}' {state}."})
+
+    flash(f"'{at.label}' {state}.", "success")
+    return redirect(url_for("settings.settings_page"))
+
+
+@settings_bp.route("/attachment-tags/<int:id>/delete", methods=["POST"])
+@role_required("admin")
+def delete_attachment_tag(id):
+    at = db.get_or_404(AttachmentTag, id)
+    label = at.label
+    # M2M rows cascade automatically via the association table
+    db.session.delete(at)
+    db.session.commit()
+    flash(f"Attachment tag '{label}' deleted.", "success")
+    return redirect(url_for("settings.settings_page"))
+
+
+# ── Theme ────────────────────────────────────────────────────────
+
+@settings_bp.route("/ui-preferences", methods=["POST"])
+@role_required("admin")
+def update_ui_preferences():
+    data = request.get_json(silent=True) or {}
+    settings = AppSettings.get()
+    if "sticky_navbar" in data:
+        settings.sticky_navbar = bool(data["sticky_navbar"])
+    if "pagination_enabled" in data:
+        settings.pagination_enabled = bool(data["pagination_enabled"])
+    if "pagination_size" in data:
+        size = int(data["pagination_size"])
+        if size in (10, 25, 50, 100):
+            settings.pagination_size = size
+    if "back_to_top" in data:
+        settings.back_to_top = bool(data["back_to_top"])
+    db.session.commit()
+    return jsonify({"ok": True})
+
+
 @settings_bp.route("/theme", methods=["POST"])
+@role_required("admin")
 def update_theme():
     data = request.get_json(silent=True) or {}
     theme = data.get("theme", "light")

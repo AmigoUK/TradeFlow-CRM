@@ -21,7 +21,8 @@ document.addEventListener("DOMContentLoaded", function () {
                     method: "PATCH",
                     headers: {
                         "Content-Type": "application/json",
-                        "X-Requested-With": "XMLHttpRequest"
+                        "X-Requested-With": "XMLHttpRequest",
+                        "X-CSRFToken": getCsrfToken()
                     },
                     body: JSON.stringify({ status: newStatus })
                 })

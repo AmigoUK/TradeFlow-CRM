@@ -1,15 +1,67 @@
-<form action="{{ url_for('attachments.upload') }}" method="POST" enctype="multipart/form-data" class="d-flex gap-2 align-items-end">
-    <input type="hidden" name="client_id" value="{{ client_id }}">
-    {% if contact_id %}
-    <input type="hidden" name="contact_id" value="{{ contact_id }}">
-    {% endif %}
-    {% if followup_id %}
-    <input type="hidden" name="followup_id" value="{{ followup_id }}">
-    {% endif %}
-    <div class="flex-grow-1">
-        <input type="file" class="form-control form-control-sm" name="file" required>
+<button type="button" class="btn btn-sm btn-outline-primary w-100" data-bs-toggle="modal" data-bs-target="#uploadAttachmentModal">
+    <i class="bi bi-upload me-1"></i>Upload File
+</button>
+
+<!-- Upload Attachment Modal -->
+<div class="modal fade" id="uploadAttachmentModal" tabindex="-1" aria-labelledby="uploadAttachmentModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form action="{{ url_for('attachments.upload') }}" method="POST" enctype="multipart/form-data">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="client_id" value="{{ client_id }}">
+                {% if contact_id %}
+                <input type="hidden" name="contact_id" value="{{ contact_id }}">
+                {% endif %}
+                {% if followup_id %}
+                <input type="hidden" name="followup_id" value="{{ followup_id }}">
+                {% endif %}
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title" id="uploadAttachmentModalLabel">
+                        <i class="bi bi-upload me-1"></i>Upload Attachment
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="upload-file" class="form-label">File <span class="text-danger">*</span></label>
+                        <input type="file" class="form-control" id="upload-file" name="file" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="upload-description" class="form-label">Description <small class="text-muted">(optional)</small></label>
+                        <input type="text" class="form-control" id="upload-description" name="description" maxlength="200"
+                               placeholder="e.g. Signed contract Q1 2026">
+                    </div>
+                    <div class="mb-3">
+                        <label for="upload-category" class="form-label">Category</label>
+                        <select class="form-select" id="upload-category" name="category_id">
+                            <option value="">None</option>
+                            {% for cat in attachment_categories %}
+                            <option value="{{ cat.id }}">{{ cat.label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    {% if attachment_tags %}
+                    <div class="mb-3">
+                        <label class="form-label">Tags</label>
+                        <div class="d-flex flex-wrap gap-2">
+                            {% for tag in attachment_tags %}
+                            <input type="checkbox" class="btn-check" id="upload-tag-{{ tag.id }}" name="tag_ids" value="{{ tag.id }}" autocomplete="off">
+                            <label class="btn btn-sm btn-outline-secondary" for="upload-tag-{{ tag.id }}"
+                                   style="--bs-btn-color: {{ tag.colour }}; --bs-btn-border-color: {{ tag.colour }}; --bs-btn-active-bg: {{ tag.colour }}; --bs-btn-active-border-color: {{ tag.colour }};">
+                                {{ tag.label }}
+                            </label>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-upload me-1"></i>Upload
+                    </button>
+                </div>
+            </form>
+        </div>
     </div>
-    <button type="submit" class="btn btn-sm btn-outline-primary">
-        <i class="bi bi-upload me-1"></i>Upload
-    </button>
-</form>
+</div>

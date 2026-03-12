@@ -1,5 +1,11 @@
 /* NextStep CRM — Delete confirmation modal handler + toast notifications + quick functions */
 
+/* Global getCsrfToken helper */
+window.getCsrfToken = function () {
+    var meta = document.querySelector('meta[name="csrf-token"]');
+    return meta ? meta.getAttribute("content") : "";
+};
+
 /* Global showToast — used by main.js and panel.js */
 window.showToast = function (message, category) {
     var container = document.querySelector(".toast-container");
@@ -37,6 +43,17 @@ window.showToast = function (message, category) {
     var toast = new bootstrap.Toast(toastEl, { delay: 4000 });
     toast.show();
 };
+
+/* Back-to-top button */
+var btnTop = document.getElementById("btnBackToTop");
+if (btnTop) {
+    window.addEventListener("scroll", function () {
+        btnTop.style.display = window.scrollY > 300 ? "" : "none";
+    });
+    btnTop.addEventListener("click", function () {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+    });
+}
 
 document.addEventListener("DOMContentLoaded", function () {
     /* Delete modal */
@@ -97,7 +114,7 @@ document.addEventListener("DOMContentLoaded", function () {
             var formData = new FormData(qfForm);
             fetch(qfForm.action, {
                 method: "POST",
-                headers: { "X-Requested-With": "XMLHttpRequest" },
+                headers: { "X-Requested-With": "XMLHttpRequest", "X-CSRFToken": getCsrfToken() },
                 body: formData
             })
             .then(function (resp) { return resp.json(); })
@@ -137,6 +154,59 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
+    /* Attachment Preview Modal */
+    var previewModal = document.getElementById("attachmentPreviewModal");
+    if (previewModal) {
+        previewModal.addEventListener("show.bs.modal", function (event) {
+            var button = event.relatedTarget;
+            var url = button.getAttribute("data-preview-url");
+            var name = button.getAttribute("data-preview-name");
+            var mime = button.getAttribute("data-preview-mime");
+            var downloadUrl = button.getAttribute("data-download-url");
+
+            document.getElementById("attachmentPreviewModalLabel").textContent = name;
+            document.getElementById("attachmentPreviewOpenTab").href = url;
+            document.getElementById("attachmentPreviewDownload").href = downloadUrl;
+
+            var body = document.getElementById("attachmentPreviewBody");
+            while (body.firstChild) { body.removeChild(body.firstChild); }
+
+            if (mime && mime.startsWith("image/")) {
+                var img = document.createElement("img");
+                img.src = url;
+                img.alt = name;
+                img.className = "img-fluid rounded";
+                img.style.maxHeight = "70vh";
+                body.appendChild(img);
+            } else if (mime === "application/pdf") {
+                var iframe = document.createElement("iframe");
+                iframe.src = url;
+                iframe.style.width = "100%";
+                iframe.style.height = "70vh";
+                iframe.style.border = "none";
+                body.appendChild(iframe);
+            } else {
+                var p = document.createElement("p");
+                p.className = "text-muted py-5";
+                p.textContent = "Preview not available for this file type.";
+                body.appendChild(p);
+                var a = document.createElement("a");
+                a.href = downloadUrl;
+                a.className = "btn btn-primary";
+                var dlIcon = document.createElement("i");
+                dlIcon.className = "bi bi-download me-1";
+                a.appendChild(dlIcon);
+                a.appendChild(document.createTextNode("Download"));
+                body.appendChild(a);
+            }
+        });
+
+        previewModal.addEventListener("hidden.bs.modal", function () {
+            var body = document.getElementById("attachmentPreviewBody");
+            while (body.firstChild) { body.removeChild(body.firstChild); }
+        });
+    }
+
     /* Follow-up completion → outcome flow */
     var navigatingAway = false;
     document.addEventListener("submit", function (e) {
@@ -150,7 +220,7 @@ document.addEventListener("DOMContentLoaded", function () {
             e.preventDefault();
             fetch(form.action, {
                 method: "POST",
-                headers: { "X-Requested-With": "XMLHttpRequest" }
+                headers: { "X-Requested-With": "XMLHttpRequest", "X-CSRFToken": getCsrfToken() }
             })
             .then(function () { location.reload(); })
             .catch(function () { form.submit(); });

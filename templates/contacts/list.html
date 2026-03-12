@@ -36,21 +36,42 @@
 </form>
 
 {% if contacts %}
+{% if current_user.has_role_at_least("manager") %}
+<div id="bulkToolbar" class="alert alert-secondary d-flex align-items-center gap-3 mb-3" style="display: none !important;">
+    <span><strong id="bulkCount">0</strong> selected</span>
+    <select id="bulkReassignUser" class="form-select form-select-sm" style="width: auto; min-width: 160px;">
+        <option value="">Reassign to...</option>
+        {% for u in all_users if u.is_active_user %}
+        <option value="{{ u.id }}">{{ u.display_name }}</option>
+        {% endfor %}
+    </select>
+    <button id="bulkReassignBtn" class="btn btn-sm btn-primary" data-url="{{ url_for('contacts.bulk_reassign_contacts') }}">
+        <i class="bi bi-arrow-left-right me-1"></i>Reassign
+    </button>
+</div>
+{% endif %}
 <div class="table-responsive">
     <table class="table table-hover align-middle">
         <thead class="table-light">
             <tr>
+                {% if current_user.has_role_at_least("manager") %}
+                <th style="width: 2rem;"><input type="checkbox" class="form-check-input" id="bulkSelectAll"></th>
+                {% endif %}
                 <th>Date</th>
                 <th>Client</th>
                 <th>Type</th>
                 <th>Notes</th>
                 <th>Outcome</th>
+                {% if current_user.has_role_at_least("manager") %}<th>Owner</th>{% endif %}
                 <th class="text-end">Actions</th>
             </tr>
         </thead>
         <tbody>
             {% for contact in contacts %}
             <tr>
+                {% if current_user.has_role_at_least("manager") %}
+                <td><input type="checkbox" class="form-check-input bulk-select-cb" value="{{ contact.id }}"></td>
+                {% endif %}
                 <td data-label="Date">{{ contact.date|relative_date }}</td>
                 <td data-label="Client">
                     <a href="{{ url_for('clients.detail_client', id=contact.client_id) }}" class="text-decoration-none">
@@ -60,6 +81,9 @@
                 <td data-label="Type"><span class="badge" style="background-color: {{ interaction_types_map.get(contact.contact_type, {}).colour|default('#6c757d') }}">{{ contact.contact_type|capitalize }}</span></td>
                 <td data-label="Notes">{{ contact.notes[:60] }}{% if contact.notes|length > 60 %}...{% endif %}</td>
                 <td data-label="Outcome">{{ contact.outcome or '—' }}</td>
+                {% if current_user.has_role_at_least("manager") %}
+                <td data-label="Owner">{{ contact.owner.display_name if contact.owner else '—' }}</td>
+                {% endif %}
                 <td data-label="Actions" class="text-end">
                     <a href="{{ url_for('contacts.edit_contact', id=contact.id) }}" class="btn btn-sm btn-outline-secondary">
                         <i class="bi bi-pencil"></i>
@@ -76,6 +100,7 @@
         </tbody>
     </table>
 </div>
+{% include "partials/_pagination.html" %}
 {% else %}
 <div class="empty-state">
     <i class="bi bi-chat-dots d-block"></i>

@@ -2,25 +2,39 @@ import os
 import uuid
 from datetime import date, datetime, timedelta
 
-from flask import current_app, flash, jsonify, redirect, render_template, request, url_for
+from flask import abort, current_app, flash, jsonify, redirect, render_template, request, url_for
+from flask_login import current_user, login_required
+from sqlalchemy.orm import joinedload
 from werkzeug.utils import secure_filename
 
+from blueprints.auth.decorators import can_access_record, role_required
 from blueprints.followups import followups_bp
 from extensions import db
-from models import Client, FollowUp, PRIORITIES, Attachment
+from models import Client, FollowUp, PRIORITIES, Attachment, AppSettings
+from models.user import User
 
 
 def _is_ajax():
     return request.headers.get("X-Requested-With") == "XMLHttpRequest"
 
 
+def _ownership_filter(query, model):
+    if current_user.has_role_at_least("manager"):
+        return query
+    return query.filter(model.user_id == current_user.id)
+
+
 @followups_bp.route("/")
+@login_required
 def list_followups():
     priority = request.args.get("priority", "").strip()
     show_overdue = request.args.get("overdue", "").strip()
     show_completed = request.args.get("completed", "").strip()
 
-    query = FollowUp.query.join(Client)
+    query = FollowUp.query.join(Client).options(joinedload(FollowUp.owner))
+
+    # Ownership filter
+    query = _ownership_filter(query, FollowUp)
 
     if priority:
         query = query.filter(FollowUp.priority == priority)
@@ -34,7 +48,22 @@ def list_followups():
     elif show_completed == "0":
         query = query.filter(FollowUp.completed == False)  # noqa: E712
 
-    followups = query.order_by(FollowUp.due_date).all()
+    settings = AppSettings.get()
+    page = request.args.get("page", 1, type=int)
+    if settings.pagination_enabled:
+        pagination = query.order_by(FollowUp.due_date).paginate(
+            page=page, per_page=settings.pagination_size, error_out=False
+        )
+        followups = pagination.items
+    else:
+        pagination = None
+        followups = query.order_by(FollowUp.due_date).all()
+
+    # Pass all_users for reassignment (Manager+)
+    all_users = None
+    if current_user.has_role_at_least("manager"):
+        all_users = User.query.filter_by(is_active_user=True).order_by(User.display_name).all()
+
     return render_template(
         "followups/list.html",
         followups=followups,
@@ -42,10 +71,13 @@ def list_followups():
         selected_priority=priority,
         show_overdue=show_overdue,
         show_completed=show_completed,
+        pagination=pagination,
+        all_users=all_users,
     )
 
 
 @followups_bp.route("/new", methods=["GET", "POST"])
+@login_required
 def create_followup():
     if request.method == "POST":
         client_id = request.form.get("client_id")
@@ -68,6 +100,11 @@ def create_followup():
             flash("Please select a client.", "danger")
             return redirect(url_for("followups.create_followup"))
 
+        # Verify client ownership
+        client = db.get_or_404(Client, int(client_id))
+        if not can_access_record(client):
+            abort(403)
+
         try:
             parsed_date = datetime.strptime(due_date_str, "%Y-%m-%d").date() if due_date_str else date.today()
         except ValueError:
@@ -87,6 +124,7 @@ def create_followup():
             due_time=parsed_time,
             priority=priority,
             notes=request.form.get("notes", "").strip(),
+            user_id=current_user.id,
         )
         db.session.add(followup)
         db.session.flush()
@@ -94,7 +132,8 @@ def create_followup():
         # Handle optional file attachment
         file = request.files.get("file")
         if file and file.filename:
-            _save_followup_file(file, int(client_id), followup.id)
+            description = request.form.get("file_description", "").strip() or None
+            _save_followup_file(file, int(client_id), followup.id, description)
 
         db.session.commit()
 
@@ -133,8 +172,11 @@ def create_followup():
 
 
 @followups_bp.route("/<int:id>/edit", methods=["GET", "POST"])
+@login_required
 def edit_followup(id):
     followup = db.get_or_404(FollowUp, id)
+    if not can_access_record(followup):
+        abort(403)
 
     if request.method == "POST":
         client_id = request.form.get("client_id")
@@ -174,7 +216,8 @@ def edit_followup(id):
         # Handle optional file attachment
         file = request.files.get("file")
         if file and file.filename:
-            _save_followup_file(file, int(client_id), followup.id)
+            description = request.form.get("file_description", "").strip() or None
+            _save_followup_file(file, int(client_id), followup.id, description)
 
         db.session.commit()
         flash("Follow-up updated successfully.", "success")
@@ -192,8 +235,11 @@ def edit_followup(id):
 
 
 @followups_bp.route("/<int:id>/complete", methods=["POST"])
+@login_required
 def complete_followup(id):
     followup = db.get_or_404(FollowUp, id)
+    if not can_access_record(followup):
+        abort(403)
     followup.completed = not followup.completed
     db.session.commit()
     status = "completed" if followup.completed else "reopened"
@@ -212,12 +258,14 @@ def complete_followup(id):
 
 
 @followups_bp.route("/matrix")
+@login_required
 def matrix():
     today = date.today()
     tomorrow = today + timedelta(days=1)
     show_completed = request.args.get("show_completed", "0").strip()
 
     query = FollowUp.query.join(Client)
+    query = _ownership_filter(query, FollowUp)
     if show_completed != "1":
         query = query.filter(FollowUp.completed == False)  # noqa: E712
 
@@ -246,7 +294,7 @@ def matrix():
     )
 
 
-def _save_followup_file(file, client_id, followup_id):
+def _save_followup_file(file, client_id, followup_id, description=None):
     """Save an uploaded file and create an Attachment record for a follow-up."""
     upload_folder = current_app.config["UPLOAD_FOLDER"]
     client_dir = os.path.join(upload_folder, str(client_id))
@@ -260,6 +308,7 @@ def _save_followup_file(file, client_id, followup_id):
     attachment = Attachment(
         filename=original_name,
         stored_filename=stored_name,
+        description=description,
         file_size=os.path.getsize(file_path),
         mime_type=file.content_type or "",
         client_id=client_id,
@@ -269,10 +318,41 @@ def _save_followup_file(file, client_id, followup_id):
 
 
 @followups_bp.route("/<int:id>/delete", methods=["POST"])
+@login_required
 def delete_followup(id):
     followup = db.get_or_404(FollowUp, id)
+    if not can_access_record(followup):
+        abort(403)
     client_id = followup.client_id
     db.session.delete(followup)
     db.session.commit()
     flash("Follow-up deleted successfully.", "success")
     return redirect(url_for("clients.detail_client", id=client_id))
+
+
+@followups_bp.route("/<int:id>/reassign", methods=["POST"])
+@role_required("manager")
+def reassign_followup(id):
+    followup = db.get_or_404(FollowUp, id)
+    data = request.get_json(silent=True) or {}
+    target_user_id = data.get("target_user_id")
+    if not target_user_id:
+        return jsonify({"ok": False, "error": "Target user is required."}), 400
+    target_user = db.get_or_404(User, int(target_user_id))
+    followup.user_id = target_user.id
+    db.session.commit()
+    return jsonify({"ok": True, "message": f"Follow-up reassigned to {target_user.display_name}."})
+
+
+@followups_bp.route("/bulk-reassign", methods=["POST"])
+@role_required("manager")
+def bulk_reassign_followups():
+    data = request.get_json(silent=True) or {}
+    ids = data.get("ids", [])
+    target_user_id = data.get("target_user_id")
+    if not ids or not target_user_id:
+        return jsonify({"ok": False, "error": "IDs and target user are required."}), 400
+    target_user = db.get_or_404(User, int(target_user_id))
+    FollowUp.query.filter(FollowUp.id.in_(ids)).update({"user_id": target_user.id})
+    db.session.commit()
+    return jsonify({"ok": True, "message": f"{len(ids)} follow-up(s) reassigned to {target_user.display_name}."})

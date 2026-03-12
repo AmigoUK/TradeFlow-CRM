@@ -200,6 +200,136 @@
     </div>
 </div>
 
+<!-- Attachment Categories Card -->
+<div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0"><i class="bi bi-folder me-1"></i>Attachment Categories</h5>
+        <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addAcModal">
+            <i class="bi bi-plus-lg me-1"></i>Add Category
+        </button>
+    </div>
+    <div class="card-body p-0">
+        {% if attachment_categories %}
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Icon</th>
+                        <th>Label</th>
+                        <th>Colour</th>
+                        <th>Active</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for ac in attachment_categories %}
+                    <tr class="{{ '' if ac.is_active else 'text-muted' }}">
+                        <td data-label="Icon"><i class="bi {{ ac.icon }} fs-5"></i></td>
+                        <td data-label="Label">{{ ac.label }}</td>
+                        <td data-label="Colour">
+                            <span class="d-inline-block rounded-circle me-1" style="width: 16px; height: 16px; background-color: {{ ac.colour }};"></span>
+                            <code>{{ ac.colour }}</code>
+                        </td>
+                        <td data-label="Active">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input settings-toggle" type="checkbox"
+                                       data-toggle-url="{{ url_for('settings.toggle_attachment_category', id=ac.id) }}"
+                                       {{ 'checked' if ac.is_active }}>
+                            </div>
+                        </td>
+                        <td data-label="Actions" class="text-end">
+                            <button class="btn btn-sm btn-outline-secondary"
+                                    data-bs-toggle="modal" data-bs-target="#editAcModal-{{ ac.id }}"
+                                    title="Edit">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-danger"
+                                    data-bs-toggle="modal" data-bs-target="#confirmDeleteModal"
+                                    data-item-name="{{ ac.label }}"
+                                    data-delete-url="{{ url_for('settings.delete_attachment_category', id=ac.id) }}"
+                                    title="Delete">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <i class="bi bi-folder d-block"></i>
+            <p>No attachment categories configured.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Attachment Tags Card -->
+<div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0"><i class="bi bi-tags me-1"></i>Attachment Tags</h5>
+        <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addAtModal">
+            <i class="bi bi-plus-lg me-1"></i>Add Tag
+        </button>
+    </div>
+    <div class="card-body p-0">
+        {% if attachment_tags %}
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Label</th>
+                        <th>Colour</th>
+                        <th>Active</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for at in attachment_tags %}
+                    <tr class="{{ '' if at.is_active else 'text-muted' }}">
+                        <td data-label="Label">
+                            <span class="badge" style="background-color: {{ at.colour }}">{{ at.label }}</span>
+                        </td>
+                        <td data-label="Colour">
+                            <span class="d-inline-block rounded-circle me-1" style="width: 16px; height: 16px; background-color: {{ at.colour }};"></span>
+                            <code>{{ at.colour }}</code>
+                        </td>
+                        <td data-label="Active">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input settings-toggle" type="checkbox"
+                                       data-toggle-url="{{ url_for('settings.toggle_attachment_tag', id=at.id) }}"
+                                       {{ 'checked' if at.is_active }}>
+                            </div>
+                        </td>
+                        <td data-label="Actions" class="text-end">
+                            <button class="btn btn-sm btn-outline-secondary"
+                                    data-bs-toggle="modal" data-bs-target="#editAtModal-{{ at.id }}"
+                                    title="Edit">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-danger"
+                                    data-bs-toggle="modal" data-bs-target="#confirmDeleteModal"
+                                    data-item-name="{{ at.label }}"
+                                    data-delete-url="{{ url_for('settings.delete_attachment_tag', id=at.id) }}"
+                                    title="Delete">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <i class="bi bi-tags d-block"></i>
+            <p>No attachment tags configured.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
 <!-- Colour Scheme Card -->
 <div class="card mb-4">
     <div class="card-header">
@@ -247,11 +377,67 @@
     </div>
 </div>
 
+<!-- UI Preferences Card -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="bi bi-sliders me-1"></i>UI Preferences</h5>
+    </div>
+    <div class="card-body">
+        <div class="row g-3">
+            <!-- Sticky navbar toggle -->
+            <div class="col-md-4">
+                <div class="form-check form-switch">
+                    <input class="form-check-input ui-pref-toggle" type="checkbox"
+                           id="prefStickyNavbar" data-pref="sticky_navbar"
+                           {{ 'checked' if settings.sticky_navbar }}>
+                    <label class="form-check-label" for="prefStickyNavbar">
+                        <i class="bi bi-pin-angle me-1"></i>Sticky navbar
+                    </label>
+                </div>
+                <small class="text-muted">Keep navigation fixed at the top</small>
+            </div>
+            <!-- Pagination toggle -->
+            <div class="col-md-4">
+                <div class="form-check form-switch">
+                    <input class="form-check-input ui-pref-toggle" type="checkbox"
+                           id="prefPagination" data-pref="pagination_enabled"
+                           {{ 'checked' if settings.pagination_enabled }}>
+                    <label class="form-check-label" for="prefPagination">
+                        <i class="bi bi-collection me-1"></i>Pagination
+                    </label>
+                </div>
+                <small class="text-muted">Split long lists into pages</small>
+                <!-- Page size selector (shown when pagination enabled) -->
+                <select class="form-select form-select-sm mt-2" id="prefPageSize"
+                        data-pref="pagination_size"
+                        {{ 'disabled' if not settings.pagination_enabled }}>
+                    {% for size in [10, 25, 50, 100] %}
+                    <option value="{{ size }}" {{ 'selected' if settings.pagination_size == size }}>{{ size }} per page</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <!-- Back to top toggle -->
+            <div class="col-md-4">
+                <div class="form-check form-switch">
+                    <input class="form-check-input ui-pref-toggle" type="checkbox"
+                           id="prefBackToTop" data-pref="back_to_top"
+                           {{ 'checked' if settings.back_to_top }}>
+                    <label class="form-check-label" for="prefBackToTop">
+                        <i class="bi bi-arrow-up-circle me-1"></i>Back to top button
+                    </label>
+                </div>
+                <small class="text-muted">Show scroll-to-top button</small>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Add Quick Function Modal -->
 <div class="modal fade" id="addQfModal" tabindex="-1" aria-labelledby="addQfModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
             <form action="{{ url_for('settings.create_quick_function') }}" method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="modal-header bg-primary text-white">
                     <h5 class="modal-title" id="addQfModalLabel">
                         <i class="bi bi-plus-lg me-1"></i>Add Quick Function
@@ -306,6 +492,7 @@
     <div class="modal-dialog">
         <div class="modal-content">
             <form action="{{ url_for('settings.edit_quick_function', id=qf.id) }}" method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="modal-header bg-primary text-white">
                     <h5 class="modal-title">
                         <i class="bi bi-pencil me-1"></i>Edit Quick Function
@@ -363,6 +550,7 @@
     <div class="modal-dialog">
         <div class="modal-content">
             <form action="{{ url_for('settings.create_interaction_type') }}" method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="modal-header bg-primary text-white">
                     <h5 class="modal-title" id="addItModalLabel">
                         <i class="bi bi-plus-lg me-1"></i>Add Interaction Type
@@ -407,6 +595,7 @@
     <div class="modal-dialog">
         <div class="modal-content">
             <form action="{{ url_for('settings.edit_interaction_type', id=it.id) }}" method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="modal-header bg-primary text-white">
                     <h5 class="modal-title">
                         <i class="bi bi-pencil me-1"></i>Edit Interaction Type
@@ -450,6 +639,7 @@
     <div class="modal-dialog">
         <div class="modal-content">
             <form action="{{ url_for('settings.create_custom_field') }}" method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="modal-header bg-primary text-white">
                     <h5 class="modal-title" id="addCfModalLabel">
                         <i class="bi bi-plus-lg me-1"></i>Add Custom Field
@@ -497,6 +687,7 @@
     <div class="modal-dialog">
         <div class="modal-content">
             <form action="{{ url_for('settings.edit_custom_field', id=cf.id) }}" method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="modal-header bg-primary text-white">
                     <h5 class="modal-title">
                         <i class="bi bi-pencil me-1"></i>Edit Custom Field
@@ -525,6 +716,167 @@
                                    value="{{ cf.icon[3:] if cf.icon.startswith('bi-') else cf.icon }}" maxlength="50">
                         </div>
                         <small class="text-muted">Bootstrap Icon name without the <code>bi-</code> prefix</small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-lg me-1"></i>Save Changes
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endfor %}
+<!-- Add Attachment Category Modal -->
+<div class="modal fade" id="addAcModal" tabindex="-1" aria-labelledby="addAcModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form action="{{ url_for('settings.create_attachment_category') }}" method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title" id="addAcModalLabel">
+                        <i class="bi bi-plus-lg me-1"></i>Add Attachment Category
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="add-ac-label" class="form-label">Label <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="add-ac-label" name="label" required maxlength="50"
+                               placeholder="e.g. Contract">
+                    </div>
+                    <div class="mb-3">
+                        <label for="add-ac-icon" class="form-label">Icon</label>
+                        <div class="input-group">
+                            <span class="input-group-text">bi-</span>
+                            <input type="text" class="form-control" id="add-ac-icon" name="icon" value="folder"
+                                   placeholder="folder" maxlength="50">
+                        </div>
+                        <small class="text-muted">Bootstrap Icon name without the <code>bi-</code> prefix</small>
+                    </div>
+                    <div class="mb-3">
+                        <label for="add-ac-colour" class="form-label">Colour</label>
+                        <input type="color" class="form-control form-control-color" id="add-ac-colour" name="colour"
+                               value="#6c757d">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-plus-lg me-1"></i>Add
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Attachment Category Modals -->
+{% for ac in attachment_categories %}
+<div class="modal fade" id="editAcModal-{{ ac.id }}" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form action="{{ url_for('settings.edit_attachment_category', id=ac.id) }}" method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title">
+                        <i class="bi bi-pencil me-1"></i>Edit Attachment Category
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="edit-ac-label-{{ ac.id }}" class="form-label">Label <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="edit-ac-label-{{ ac.id }}" name="label"
+                               value="{{ ac.label }}" required maxlength="50">
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit-ac-icon-{{ ac.id }}" class="form-label">Icon</label>
+                        <div class="input-group">
+                            <span class="input-group-text">bi-</span>
+                            <input type="text" class="form-control" id="edit-ac-icon-{{ ac.id }}" name="icon"
+                                   value="{{ ac.icon[3:] if ac.icon.startswith('bi-') else ac.icon }}" maxlength="50">
+                        </div>
+                        <small class="text-muted">Bootstrap Icon name without the <code>bi-</code> prefix</small>
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit-ac-colour-{{ ac.id }}" class="form-label">Colour</label>
+                        <input type="color" class="form-control form-control-color" id="edit-ac-colour-{{ ac.id }}" name="colour"
+                               value="{{ ac.colour }}">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-lg me-1"></i>Save Changes
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endfor %}
+
+<!-- Add Attachment Tag Modal -->
+<div class="modal fade" id="addAtModal" tabindex="-1" aria-labelledby="addAtModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form action="{{ url_for('settings.create_attachment_tag') }}" method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title" id="addAtModalLabel">
+                        <i class="bi bi-plus-lg me-1"></i>Add Attachment Tag
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="add-at-label" class="form-label">Label <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="add-at-label" name="label" required maxlength="30"
+                               placeholder="e.g. Draft">
+                    </div>
+                    <div class="mb-3">
+                        <label for="add-at-colour" class="form-label">Colour</label>
+                        <input type="color" class="form-control form-control-color" id="add-at-colour" name="colour"
+                               value="#6c757d">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-plus-lg me-1"></i>Add
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Attachment Tag Modals -->
+{% for at in attachment_tags %}
+<div class="modal fade" id="editAtModal-{{ at.id }}" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form action="{{ url_for('settings.edit_attachment_tag', id=at.id) }}" method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title">
+                        <i class="bi bi-pencil me-1"></i>Edit Attachment Tag
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="edit-at-label-{{ at.id }}" class="form-label">Label <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="edit-at-label-{{ at.id }}" name="label"
+                               value="{{ at.label }}" required maxlength="30">
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit-at-colour-{{ at.id }}" class="form-label">Colour</label>
+                        <input type="color" class="form-control form-control-color" id="edit-at-colour-{{ at.id }}" name="colour"
+                               value="{{ at.colour }}">
                     </div>
                 </div>
                 <div class="modal-footer">

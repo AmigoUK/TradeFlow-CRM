@@ -47,6 +47,16 @@
                     {% endfor %}
                     {% endif %}
 
+                    {% if current_user.has_role_at_least("manager") and client.owner %}
+                    <p class="mb-2"><i class="bi bi-person-badge me-2 text-muted"></i><strong>Owner:</strong> {{ client.owner.display_name }}</p>
+                    {% endif %}
+
+                    {% if current_user.has_role_at_least("manager") and client.user_id != current_user.id %}
+                    <div class="alert alert-info py-1 px-2 mb-2 small">
+                        <i class="bi bi-eye me-1"></i>Viewing record owned by {{ client.owner.display_name if client.owner else 'unknown' }}
+                    </div>
+                    {% endif %}
+
                     <hr>
 
                     <div class="row text-center mb-3">
@@ -116,8 +126,26 @@
                             <i class="bi bi-trash me-1"></i>Delete
                         </button>
                     </div>
+
+                    {% if current_user.has_role_at_least("manager") and all_users is defined %}
+                    <hr>
+                    <h6 class="text-muted mb-2"><i class="bi bi-arrow-left-right me-1"></i>Reassign</h6>
+                    <form class="reassign-form" action="{{ url_for('clients.reassign_client', id=client.id) }}">
+                        <select class="form-select form-select-sm reassign-select" style="min-width: 140px;">
+                            <option value="">Reassign to...</option>
+                            {% for u in all_users if u.is_active_user %}
+                            <option value="{{ u.id }}">{{ u.display_name }}</option>
+                            {% endfor %}
+                        </select>
+                        <div class="form-check mt-2">
+                            <input class="form-check-input" type="checkbox" name="cascade" id="cascadeReassign" checked>
+                            <label class="form-check-label small" for="cascadeReassign">Include interactions &amp; follow-ups</label>
+                        </div>
+                    </form>
+                    {% endif %}
                 </div>
             </div>
+        </div>
 
             <!-- Attachments Card -->
             <div class="card mb-3">
@@ -169,7 +197,6 @@
                     </ul>
                 </div>
             </div>
-        </div>
     </div>
 
     <!-- Right Column — Activity Timeline -->
@@ -209,6 +236,7 @@
                                   data-client-name="{{ client.company_name }}"
                                   data-notes="{{ item.notes or '' }}"
                                   data-completed="false">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                 <button type="submit" class="btn btn-sm btn-outline-success" title="Mark complete">
                                     <i class="bi bi-check-lg"></i>
                                 </button>

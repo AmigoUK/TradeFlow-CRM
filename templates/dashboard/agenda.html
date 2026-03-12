@@ -34,6 +34,7 @@
               data-client-name="{{ fu.client.company_name }}"
               data-notes="{{ fu.notes or '' }}"
               data-completed="false">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <button type="submit" class="btn btn-sm btn-outline-success" title="Mark complete">
                 <i class="bi bi-check-lg"></i>
             </button>

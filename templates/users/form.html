@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+
+{% block title %}{{ 'Edit' if user else 'New' }} User — NextStep CRM{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{{ url_for('users.list_users') }}">Users</a></li>
+        <li class="breadcrumb-item active">{{ 'Edit' if user else 'New User' }}</li>
+    </ol>
+</nav>
+
+<h1 class="mb-4">{{ 'Edit User' if user else 'New User' }}</h1>
+
+<div class="card">
+    <div class="card-body">
+        <form method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            {% if not user %}
+            <div class="mb-3">
+                <label for="username" class="form-label">Username <span class="text-danger">*</span></label>
+                <input type="text" class="form-control" id="username" name="username" required
+                       autocomplete="off" pattern="[a-z0-9_]+" title="Lowercase letters, numbers, and underscores only">
+            </div>
+            {% else %}
+            <div class="mb-3">
+                <label class="form-label">Username</label>
+                <input type="text" class="form-control" value="{{ user.username }}" disabled>
+            </div>
+            {% endif %}
+
+            <div class="mb-3">
+                <label for="display_name" class="form-label">Display Name <span class="text-danger">*</span></label>
+                <input type="text" class="form-control" id="display_name" name="display_name"
+                       value="{{ user.display_name if user else '' }}" required>
+            </div>
+
+            {% if not user %}
+            <div class="mb-3">
+                <label for="password" class="form-label">Password <span class="text-danger">*</span></label>
+                <input type="password" class="form-control" id="password" name="password" required autocomplete="new-password">
+            </div>
+            {% endif %}
+
+            {% if current_user.has_role_at_least("admin") %}
+            <div class="mb-3">
+                <label for="role" class="form-label">Role</label>
+                <select class="form-select" id="role" name="role">
+                    {% for r in roles %}
+                    <option value="{{ r }}" {% if user and user.role == r %}selected{% elif not user and r == 'user' %}selected{% endif %}>
+                        {{ r|capitalize }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% endif %}
+
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-check-lg me-1"></i>{{ 'Update' if user else 'Create' }} User
+                </button>
+                <a href="{{ url_for('users.list_users') }}" class="btn btn-outline-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

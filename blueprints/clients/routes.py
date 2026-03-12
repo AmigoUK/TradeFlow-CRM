@@ -2,19 +2,30 @@ import os
 import shutil
 from datetime import date, datetime
 
-from flask import current_app, flash, jsonify, redirect, render_template, request, url_for
+from flask import abort, current_app, flash, jsonify, redirect, render_template, request, url_for
+from flask_login import current_user, login_required
 from sqlalchemy import func
+from sqlalchemy.orm import joinedload
 
+from blueprints.auth.decorators import can_access_record, role_required
 from blueprints.clients import clients_bp
 from extensions import db
-from models import Client, CLIENT_STATUSES, Contact, FollowUp, QuickFunction, InteractionType, CustomFieldDefinition, CustomFieldValue, Attachment
+from models import Client, CLIENT_STATUSES, Contact, FollowUp, QuickFunction, InteractionType, CustomFieldDefinition, CustomFieldValue, Attachment, AttachmentCategory, AttachmentTag, AppSettings
+from models.user import User
 
 
 def _is_ajax():
     return request.headers.get("X-Requested-With") == "XMLHttpRequest"
 
 
+def _ownership_filter(query, model):
+    if current_user.has_role_at_least("manager"):
+        return query
+    return query.filter(model.user_id == current_user.id)
+
+
 @clients_bp.route("/")
+@login_required
 def list_clients():
     q = request.args.get("q", "").strip()
     status = request.args.get("status", "").strip()
@@ -48,14 +59,28 @@ def list_clients():
         )
         .outerjoin(last_contact_sq, Client.id == last_contact_sq.c.client_id)
         .outerjoin(next_followup_sq, Client.id == next_followup_sq.c.client_id)
+        .options(joinedload(Client.owner))
     )
+
+    # Ownership filter
+    if not current_user.has_role_at_least("manager"):
+        query = query.filter(Client.user_id == current_user.id)
 
     if q:
         query = query.filter(Client.company_name.ilike(f"%{q}%"))
     if status and view != "board":
         query = query.filter(Client.status == status)
 
-    results = query.order_by(Client.company_name).all()
+    settings = AppSettings.get()
+    page = request.args.get("page", 1, type=int)
+    ordered = query.order_by(Client.company_name)
+
+    if settings.pagination_enabled and view != "board":
+        pagination = ordered.paginate(page=page, per_page=settings.pagination_size, error_out=False)
+        results = pagination.items
+    else:
+        pagination = None
+        results = ordered.all()
 
     # Attach computed dates to client objects for template access
     clients = []
@@ -68,6 +93,11 @@ def list_clients():
         QuickFunction.sort_order
     ).all()
 
+    # Pass all_users for reassignment (Manager+)
+    all_users = None
+    if current_user.has_role_at_least("manager"):
+        all_users = User.query.filter_by(is_active_user=True).order_by(User.display_name).all()
+
     return render_template(
         "clients/list.html",
         clients=clients,
@@ -76,10 +106,13 @@ def list_clients():
         status=status,
         view=view,
         quick_functions=[qf.to_dict() for qf in active_qfs],
+        pagination=pagination,
+        all_users=all_users,
     )
 
 
 @clients_bp.route("/new", methods=["GET", "POST"])
+@login_required
 def create_client():
     active_custom_fields = CustomFieldDefinition.query.filter_by(is_active=True).order_by(
         CustomFieldDefinition.sort_order
@@ -114,6 +147,7 @@ def create_client():
             email=request.form.get("email", "").strip(),
             contact_person=request.form.get("contact_person", "").strip(),
             status=request.form.get("status", "lead"),
+            user_id=current_user.id,
         )
         db.session.add(client)
         db.session.flush()
@@ -155,8 +189,11 @@ def create_client():
 
 
 @clients_bp.route("/<int:id>")
+@login_required
 def detail_client(id):
     client = db.get_or_404(Client, id)
+    if not can_access_record(client):
+        abort(403)
 
     # Build unified timeline merging contacts + follow-ups
     types_map = {t.label: {"icon": t.icon, "colour": t.colour} for t in InteractionType.query.all()}
@@ -218,9 +255,23 @@ def detail_client(id):
     }
 
     # All attachments for this client (direct + via contacts/followups)
-    client_attachments = Attachment.query.filter_by(client_id=client.id).order_by(
-        Attachment.created_at.desc()
+    client_attachments = Attachment.query.filter_by(client_id=client.id).options(
+        joinedload(Attachment.category),
+        joinedload(Attachment.tags),
+    ).order_by(Attachment.created_at.desc()).all()
+
+    # Active categories and tags for upload/edit modals
+    attachment_categories = AttachmentCategory.query.filter_by(is_active=True).order_by(
+        AttachmentCategory.sort_order
     ).all()
+    attachment_tags = AttachmentTag.query.filter_by(is_active=True).order_by(
+        AttachmentTag.sort_order
+    ).all()
+
+    # Pass all_users for reassignment (Manager+)
+    all_users = None
+    if current_user.has_role_at_least("manager"):
+        all_users = User.query.filter_by(is_active_user=True).order_by(User.display_name).all()
 
     return render_template(
         "clients/detail.html",
@@ -238,13 +289,20 @@ def detail_client(id):
         custom_fields=active_custom_fields,
         custom_values=custom_values,
         client_attachments=client_attachments,
+        attachment_categories=attachment_categories,
+        attachment_tags=attachment_tags,
         client_id=client.id,
+        all_users=all_users,
     )
 
 
 @clients_bp.route("/<int:id>/edit", methods=["GET", "POST"])
+@login_required
 def edit_client(id):
     client = db.get_or_404(Client, id)
+    if not can_access_record(client):
+        abort(403)
+
     active_custom_fields = CustomFieldDefinition.query.filter_by(is_active=True).order_by(
         CustomFieldDefinition.sort_order
     ).all()
@@ -301,8 +359,11 @@ def edit_client(id):
 
 
 @clients_bp.route("/<int:id>/status", methods=["PATCH"])
+@login_required
 def update_status(id):
     client = db.get_or_404(Client, id)
+    if not can_access_record(client):
+        abort(403)
     data = request.get_json(silent=True) or {}
     new_status = data.get("status", "")
     if new_status not in CLIENT_STATUSES:
@@ -313,8 +374,11 @@ def update_status(id):
 
 
 @clients_bp.route("/<int:id>/quick-action", methods=["POST"])
+@login_required
 def quick_action(id):
     client = db.get_or_404(Client, id)
+    if not can_access_record(client):
+        abort(403)
 
     try:
         action_id = int(request.form.get("action_id", "0"))
@@ -335,6 +399,7 @@ def quick_action(id):
         contact_type=qf.contact_type,
         notes=qf.notes,
         outcome=qf.outcome,
+        user_id=current_user.id,
     )
     db.session.add(contact)
     db.session.commit()
@@ -348,8 +413,12 @@ def quick_action(id):
 
 
 @clients_bp.route("/<int:id>/delete", methods=["POST"])
+@login_required
 def delete_client(id):
     client = db.get_or_404(Client, id)
+    if not can_access_record(client):
+        abort(403)
+
     name = client.company_name
     client_id = client.id
     db.session.delete(client)
@@ -362,3 +431,40 @@ def delete_client(id):
 
     flash(f"Client '{name}' deleted successfully.", "success")
     return redirect(url_for("clients.list_clients"))
+
+
+@clients_bp.route("/<int:id>/reassign", methods=["POST"])
+@role_required("manager")
+def reassign_client(id):
+    """Reassign a single client (optionally with child contacts/followups)."""
+    client = db.get_or_404(Client, id)
+    data = request.get_json(silent=True) or {}
+    target_user_id = data.get("target_user_id")
+
+    if not target_user_id:
+        return jsonify({"ok": False, "error": "Target user is required."}), 400
+
+    target_user = db.get_or_404(User, int(target_user_id))
+    client.user_id = target_user.id
+
+    if data.get("cascade"):
+        Contact.query.filter_by(client_id=client.id).update({"user_id": target_user.id})
+        FollowUp.query.filter_by(client_id=client.id).update({"user_id": target_user.id})
+
+    db.session.commit()
+    return jsonify({"ok": True, "message": f"Client reassigned to {target_user.display_name}."})
+
+
+@clients_bp.route("/bulk-reassign", methods=["POST"])
+@role_required("manager")
+def bulk_reassign():
+    """Bulk-reassign selected clients to another user."""
+    data = request.get_json(silent=True) or {}
+    ids = data.get("ids", [])
+    target_user_id = data.get("target_user_id")
+    if not ids or not target_user_id:
+        return jsonify({"ok": False, "error": "IDs and target user are required."}), 400
+    target_user = db.get_or_404(User, int(target_user_id))
+    Client.query.filter(Client.id.in_(ids)).update({"user_id": target_user.id})
+    db.session.commit()
+    return jsonify({"ok": True, "message": f"{len(ids)} client(s) reassigned to {target_user.display_name}."})

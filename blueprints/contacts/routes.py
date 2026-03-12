@@ -2,25 +2,39 @@ import os
 import uuid
 from datetime import date, datetime
 
-from flask import current_app, flash, jsonify, redirect, render_template, request, url_for
+from flask import abort, current_app, flash, jsonify, redirect, render_template, request, url_for
+from flask_login import current_user, login_required
+from sqlalchemy.orm import joinedload
 from werkzeug.utils import secure_filename
 
+from blueprints.auth.decorators import can_access_record, role_required
 from blueprints.contacts import contacts_bp
 from extensions import db
-from models import Client, Contact, InteractionType, Attachment
+from models import Client, Contact, InteractionType, Attachment, AppSettings
+from models.user import User
 
 
 def _is_ajax():
     return request.headers.get("X-Requested-With") == "XMLHttpRequest"
 
 
+def _ownership_filter(query, model):
+    if current_user.has_role_at_least("manager"):
+        return query
+    return query.filter(model.user_id == current_user.id)
+
+
 @contacts_bp.route("/")
+@login_required
 def list_contacts():
     contact_type = request.args.get("type", "").strip()
     date_from = request.args.get("date_from", "").strip()
     date_to = request.args.get("date_to", "").strip()
 
-    query = Contact.query.join(Client)
+    query = Contact.query.join(Client).options(joinedload(Contact.owner))
+
+    # Ownership filter
+    query = _ownership_filter(query, Contact)
 
     if contact_type:
         query = query.filter(Contact.contact_type == contact_type)
@@ -35,7 +49,22 @@ def list_contacts():
         except ValueError:
             pass
 
-    contacts = query.order_by(Contact.date.desc()).all()
+    settings = AppSettings.get()
+    page = request.args.get("page", 1, type=int)
+    if settings.pagination_enabled:
+        pagination = query.order_by(Contact.date.desc()).paginate(
+            page=page, per_page=settings.pagination_size, error_out=False
+        )
+        contacts = pagination.items
+    else:
+        pagination = None
+        contacts = query.order_by(Contact.date.desc()).all()
+
+    # Pass all_users for reassignment (Manager+)
+    all_users = None
+    if current_user.has_role_at_least("manager"):
+        all_users = User.query.filter_by(is_active_user=True).order_by(User.display_name).all()
+
     return render_template(
         "contacts/list.html",
         contacts=contacts,
@@ -43,10 +72,13 @@ def list_contacts():
         selected_type=contact_type,
         date_from=date_from,
         date_to=date_to,
+        pagination=pagination,
+        all_users=all_users,
     )
 
 
 @contacts_bp.route("/new", methods=["GET", "POST"])
+@login_required
 def create_contact():
     if request.method == "POST":
         client_id = request.form.get("client_id")
@@ -70,6 +102,11 @@ def create_contact():
             flash("Please select a client.", "danger")
             return redirect(url_for("contacts.create_contact"))
 
+        # Verify client ownership
+        client = db.get_or_404(Client, int(client_id))
+        if not can_access_record(client):
+            abort(403)
+
         try:
             parsed_date = datetime.strptime(contact_date, "%Y-%m-%d").date() if contact_date else date.today()
         except ValueError:
@@ -90,6 +127,7 @@ def create_contact():
             contact_type=contact_type,
             notes=request.form.get("notes", "").strip(),
             outcome=request.form.get("outcome", "").strip(),
+            user_id=current_user.id,
         )
         db.session.add(contact)
         db.session.flush()
@@ -97,7 +135,8 @@ def create_contact():
         # Handle optional file attachment
         file = request.files.get("file")
         if file and file.filename:
-            _save_contact_file(file, int(client_id), contact.id)
+            description = request.form.get("file_description", "").strip() or None
+            _save_contact_file(file, int(client_id), contact.id, description)
 
         db.session.commit()
 
@@ -140,8 +179,11 @@ def create_contact():
 
 
 @contacts_bp.route("/<int:id>/edit", methods=["GET", "POST"])
+@login_required
 def edit_contact(id):
     contact = db.get_or_404(Contact, id)
+    if not can_access_record(contact):
+        abort(403)
 
     if request.method == "POST":
         client_id = request.form.get("client_id")
@@ -181,7 +223,8 @@ def edit_contact(id):
         # Handle optional file attachment
         file = request.files.get("file")
         if file and file.filename:
-            _save_contact_file(file, int(client_id), contact.id)
+            description = request.form.get("file_description", "").strip() or None
+            _save_contact_file(file, int(client_id), contact.id, description)
 
         db.session.commit()
         flash("Interaction updated successfully.", "success")
@@ -198,7 +241,7 @@ def edit_contact(id):
     )
 
 
-def _save_contact_file(file, client_id, contact_id):
+def _save_contact_file(file, client_id, contact_id, description=None):
     """Save an uploaded file and create an Attachment record for a contact."""
     upload_folder = current_app.config["UPLOAD_FOLDER"]
     client_dir = os.path.join(upload_folder, str(client_id))
@@ -212,6 +255,7 @@ def _save_contact_file(file, client_id, contact_id):
     attachment = Attachment(
         filename=original_name,
         stored_filename=stored_name,
+        description=description,
         file_size=os.path.getsize(file_path),
         mime_type=file.content_type or "",
         client_id=client_id,
@@ -221,10 +265,41 @@ def _save_contact_file(file, client_id, contact_id):
 
 
 @contacts_bp.route("/<int:id>/delete", methods=["POST"])
+@login_required
 def delete_contact(id):
     contact = db.get_or_404(Contact, id)
+    if not can_access_record(contact):
+        abort(403)
     client_id = contact.client_id
     db.session.delete(contact)
     db.session.commit()
     flash("Interaction deleted successfully.", "success")
     return redirect(url_for("clients.detail_client", id=client_id))
+
+
+@contacts_bp.route("/<int:id>/reassign", methods=["POST"])
+@role_required("manager")
+def reassign_contact(id):
+    contact = db.get_or_404(Contact, id)
+    data = request.get_json(silent=True) or {}
+    target_user_id = data.get("target_user_id")
+    if not target_user_id:
+        return jsonify({"ok": False, "error": "Target user is required."}), 400
+    target_user = db.get_or_404(User, int(target_user_id))
+    contact.user_id = target_user.id
+    db.session.commit()
+    return jsonify({"ok": True, "message": f"Interaction reassigned to {target_user.display_name}."})
+
+
+@contacts_bp.route("/bulk-reassign", methods=["POST"])
+@role_required("manager")
+def bulk_reassign_contacts():
+    data = request.get_json(silent=True) or {}
+    ids = data.get("ids", [])
+    target_user_id = data.get("target_user_id")
+    if not ids or not target_user_id:
+        return jsonify({"ok": False, "error": "IDs and target user are required."}), 400
+    target_user = db.get_or_404(User, int(target_user_id))
+    Contact.query.filter(Contact.id.in_(ids)).update({"user_id": target_user.id})
+    db.session.commit()
+    return jsonify({"ok": True, "message": f"{len(ids)} interaction(s) reassigned to {target_user.display_name}."})

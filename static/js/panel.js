@@ -82,7 +82,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
             fetch(actionUrl, {
                 method: "POST",
-                headers: { "X-Requested-With": "XMLHttpRequest" },
+                headers: { "X-Requested-With": "XMLHttpRequest", "X-CSRFToken": getCsrfToken() },
                 body: formData
             })
             .then(function (resp) { return resp.json(); })

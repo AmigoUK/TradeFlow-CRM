@@ -1,0 +1,11 @@
+{# Reassign dropdown — expects `reassign_url` and `all_users` in context #}
+{% if current_user.has_role_at_least("manager") and all_users is defined %}
+<form class="reassign-form d-inline" action="{{ reassign_url }}">
+    <select class="form-select form-select-sm d-inline-block reassign-select" style="width: auto; min-width: 140px;">
+        <option value="">Reassign to...</option>
+        {% for u in all_users if u.is_active_user %}
+        <option value="{{ u.id }}">{{ u.display_name }}</option>
+        {% endfor %}
+    </select>
+</form>
+{% endif %}
