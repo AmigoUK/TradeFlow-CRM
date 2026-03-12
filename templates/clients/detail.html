@@ -30,6 +30,23 @@
                     <p class="mb-2"><i class="bi bi-telephone me-2 text-muted"></i><strong>Phone:</strong> {{ client.phone|tel_link }}</p>
                     <p class="mb-2"><i class="bi bi-envelope me-2 text-muted"></i><strong>Email:</strong> {{ client.email|mailto_link }}</p>
 
+                    {% if custom_fields %}
+                    {% for field in custom_fields %}
+                    {% set val = custom_values.get(field.id, '') %}
+                    {% if val %}
+                    <p class="mb-2">
+                        <i class="bi {{ field.icon }} me-2 text-muted"></i>
+                        <strong>{{ field.label }}:</strong>
+                        {% if field.field_type == 'url' %}
+                            <a href="{{ val }}" target="_blank" rel="noopener">{{ val }} <i class="bi bi-box-arrow-up-right" style="font-size: 0.75rem;"></i></a>
+                        {% else %}
+                            {{ val }}
+                        {% endif %}
+                    </p>
+                    {% endif %}
+                    {% endfor %}
+                    {% endif %}
+
                     <hr>
 
                     <div class="row text-center mb-3">

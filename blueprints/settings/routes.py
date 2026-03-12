@@ -4,7 +4,7 @@ from flask import flash, jsonify, redirect, render_template, request, url_for
 
 from blueprints.settings import settings_bp
 from extensions import db
-from models import QuickFunction, AppSettings, InteractionType, Contact
+from models import QuickFunction, AppSettings, InteractionType, Contact, CustomFieldDefinition
 
 
 def _is_ajax():
@@ -19,11 +19,15 @@ def settings_page():
     interaction_types = InteractionType.query.order_by(
         InteractionType.sort_order, InteractionType.id
     ).all()
+    custom_fields = CustomFieldDefinition.query.order_by(
+        CustomFieldDefinition.sort_order, CustomFieldDefinition.id
+    ).all()
     settings = AppSettings.get()
     return render_template(
         "settings/index.html",
         quick_functions=quick_functions,
         interaction_types=interaction_types,
+        custom_fields=custom_fields,
         settings=settings,
     )
 
@@ -205,6 +209,86 @@ def delete_interaction_type(id):
     db.session.delete(it)
     db.session.commit()
     flash(f"Interaction type '{label}' deleted.", "success")
+    return redirect(url_for("settings.settings_page"))
+
+
+# ── Custom Fields ────────────────────────────────────────────────
+
+@settings_bp.route("/custom-fields/new", methods=["POST"])
+def create_custom_field():
+    label = request.form.get("label", "").strip()
+    if not label:
+        flash("Label is required.", "danger")
+        return redirect(url_for("settings.settings_page"))
+
+    icon = request.form.get("icon", "bi-input-cursor-text").strip()
+    if not icon.startswith("bi-"):
+        icon = "bi-" + icon
+
+    field_type = request.form.get("field_type", "text")
+    if field_type not in ("text", "textarea", "url"):
+        field_type = "text"
+
+    max_order = db.session.query(db.func.max(CustomFieldDefinition.sort_order)).scalar() or 0
+
+    cf = CustomFieldDefinition(
+        label=label,
+        icon=icon,
+        field_type=field_type,
+        sort_order=max_order + 1,
+    )
+    db.session.add(cf)
+    db.session.commit()
+    flash(f"Custom field '{cf.label}' created.", "success")
+    return redirect(url_for("settings.settings_page"))
+
+
+@settings_bp.route("/custom-fields/<int:id>/edit", methods=["POST"])
+def edit_custom_field(id):
+    cf = db.get_or_404(CustomFieldDefinition, id)
+
+    label = request.form.get("label", "").strip()
+    if not label:
+        flash("Label is required.", "danger")
+        return redirect(url_for("settings.settings_page"))
+
+    icon = request.form.get("icon", cf.icon).strip()
+    if not icon.startswith("bi-"):
+        icon = "bi-" + icon
+
+    field_type = request.form.get("field_type", cf.field_type)
+    if field_type not in ("text", "textarea", "url"):
+        field_type = cf.field_type
+
+    cf.label = label
+    cf.icon = icon
+    cf.field_type = field_type
+    db.session.commit()
+    flash(f"Custom field '{cf.label}' updated.", "success")
+    return redirect(url_for("settings.settings_page"))
+
+
+@settings_bp.route("/custom-fields/<int:id>/toggle", methods=["POST"])
+def toggle_custom_field(id):
+    cf = db.get_or_404(CustomFieldDefinition, id)
+    cf.is_active = not cf.is_active
+    db.session.commit()
+
+    state = "activated" if cf.is_active else "deactivated"
+    if _is_ajax():
+        return jsonify({"ok": True, "is_active": cf.is_active, "message": f"'{cf.label}' {state}."})
+
+    flash(f"'{cf.label}' {state}.", "success")
+    return redirect(url_for("settings.settings_page"))
+
+
+@settings_bp.route("/custom-fields/<int:id>/delete", methods=["POST"])
+def delete_custom_field(id):
+    cf = db.get_or_404(CustomFieldDefinition, id)
+    label = cf.label
+    db.session.delete(cf)
+    db.session.commit()
+    flash(f"Custom field '{label}' and all its values deleted.", "success")
     return redirect(url_for("settings.settings_page"))
 
 

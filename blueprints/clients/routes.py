@@ -5,7 +5,7 @@ from sqlalchemy import func
 
 from blueprints.clients import clients_bp
 from extensions import db
-from models import Client, CLIENT_STATUSES, Contact, FollowUp, QuickFunction, InteractionType
+from models import Client, CLIENT_STATUSES, Contact, FollowUp, QuickFunction, InteractionType, CustomFieldDefinition, CustomFieldValue
 
 
 def _is_ajax():
@@ -79,6 +79,10 @@ def list_clients():
 
 @clients_bp.route("/new", methods=["GET", "POST"])
 def create_client():
+    active_custom_fields = CustomFieldDefinition.query.filter_by(is_active=True).order_by(
+        CustomFieldDefinition.sort_order
+    ).all()
+
     if request.method == "POST":
         company_name = request.form.get("company_name", "").strip()
         if not company_name:
@@ -87,6 +91,8 @@ def create_client():
                     "clients/_form_fields.html",
                     client=None,
                     statuses=CLIENT_STATUSES,
+                    custom_fields=active_custom_fields,
+                    custom_values={},
                     panel_mode=True,
                 )
                 return jsonify({"ok": False, "html": html})
@@ -95,6 +101,8 @@ def create_client():
                 "clients/form.html",
                 client=None,
                 statuses=CLIENT_STATUSES,
+                custom_fields=active_custom_fields,
+                custom_values={},
             )
 
         client = Client(
@@ -106,6 +114,13 @@ def create_client():
             status=request.form.get("status", "lead"),
         )
         db.session.add(client)
+        db.session.flush()
+
+        # Save custom field values
+        for cf in active_custom_fields:
+            val = request.form.get(f"custom_field_{cf.id}", "").strip()
+            if val:
+                db.session.add(CustomFieldValue(definition_id=cf.id, client_id=client.id, value=val))
         db.session.commit()
 
         if _is_ajax():
@@ -123,6 +138,8 @@ def create_client():
             "clients/_form_fields.html",
             client=None,
             statuses=CLIENT_STATUSES,
+            custom_fields=active_custom_fields,
+            custom_values={},
             panel_mode=True,
         )
 
@@ -130,6 +147,8 @@ def create_client():
         "clients/form.html",
         client=None,
         statuses=CLIENT_STATUSES,
+        custom_fields=active_custom_fields,
+        custom_values={},
     )
 
 
@@ -185,6 +204,15 @@ def detail_client(id):
     pending_followups = total_followups - completed_followups
     completion_rate = round((completed_followups / total_followups) * 100) if total_followups else 0
 
+    # Custom field values for display
+    active_custom_fields = CustomFieldDefinition.query.filter_by(is_active=True).order_by(
+        CustomFieldDefinition.sort_order
+    ).all()
+    custom_values = {
+        v.definition_id: v.value
+        for v in CustomFieldValue.query.filter_by(client_id=client.id).all()
+    }
+
     return render_template(
         "clients/detail.html",
         client=client,
@@ -198,21 +226,32 @@ def detail_client(id):
         quick_functions=[qf.to_dict() for qf in QuickFunction.query.filter_by(
             is_active=True
         ).order_by(QuickFunction.sort_order).all()],
+        custom_fields=active_custom_fields,
+        custom_values=custom_values,
     )
 
 
 @clients_bp.route("/<int:id>/edit", methods=["GET", "POST"])
 def edit_client(id):
     client = db.get_or_404(Client, id)
+    active_custom_fields = CustomFieldDefinition.query.filter_by(is_active=True).order_by(
+        CustomFieldDefinition.sort_order
+    ).all()
 
     if request.method == "POST":
         company_name = request.form.get("company_name", "").strip()
         if not company_name:
             flash("Company name is required.", "danger")
+            custom_values = {
+                v.definition_id: v.value
+                for v in CustomFieldValue.query.filter_by(client_id=client.id).all()
+            }
             return render_template(
                 "clients/form.html",
                 client=client,
                 statuses=CLIENT_STATUSES,
+                custom_fields=active_custom_fields,
+                custom_values=custom_values,
             )
 
         client.company_name = company_name
@@ -221,14 +260,32 @@ def edit_client(id):
         client.email = request.form.get("email", "").strip()
         client.contact_person = request.form.get("contact_person", "").strip()
         client.status = request.form.get("status", "lead")
+
+        # Upsert custom field values
+        for cf in active_custom_fields:
+            val = request.form.get(f"custom_field_{cf.id}", "").strip()
+            existing = CustomFieldValue.query.filter_by(
+                definition_id=cf.id, client_id=client.id
+            ).first()
+            if existing:
+                existing.value = val
+            elif val:
+                db.session.add(CustomFieldValue(definition_id=cf.id, client_id=client.id, value=val))
+
         db.session.commit()
         flash(f"Client '{client.company_name}' updated successfully.", "success")
         return redirect(url_for("clients.detail_client", id=client.id))
 
+    custom_values = {
+        v.definition_id: v.value
+        for v in CustomFieldValue.query.filter_by(client_id=client.id).all()
+    }
     return render_template(
         "clients/form.html",
         client=client,
         statuses=CLIENT_STATUSES,
+        custom_fields=active_custom_fields,
+        custom_values=custom_values,
     )
 
 

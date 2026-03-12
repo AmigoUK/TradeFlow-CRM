@@ -26,6 +26,9 @@ class Client(db.Model):
     followups = db.relationship(
         "FollowUp", backref="client", cascade="all, delete-orphan", lazy=True
     )
+    custom_field_values = db.relationship(
+        "CustomFieldValue", backref="client", cascade="all, delete-orphan", lazy=True
+    )
 
     def __repr__(self):
         return f"<Client {self.company_name}>"

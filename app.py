@@ -6,7 +6,7 @@ from markupsafe import Markup
 from config import Config
 from extensions import db
 
-APP_VERSION = "0.13.0-beta"
+APP_VERSION = "0.14.0-beta"
 
 
 def tel_link(value):
@@ -93,6 +93,7 @@ def create_app():
         from models import (  # noqa: F401
             Client, Contact, FollowUp, QuickFunction, DEFAULT_QUICK_FUNCTIONS,
             AppSettings, InteractionType, DEFAULT_INTERACTION_TYPES,
+            CustomFieldDefinition, CustomFieldValue, DEFAULT_CUSTOM_FIELDS,
         )
         db.create_all()
 
@@ -108,6 +109,13 @@ def create_app():
             for i, it_data in enumerate(DEFAULT_INTERACTION_TYPES):
                 it = InteractionType(sort_order=i, **it_data)
                 db.session.add(it)
+            db.session.commit()
+
+        # Seed default custom field definitions if table is empty
+        if CustomFieldDefinition.query.count() == 0:
+            for i, cf_data in enumerate(DEFAULT_CUSTOM_FIELDS):
+                cf = CustomFieldDefinition(sort_order=i, **cf_data)
+                db.session.add(cf)
             db.session.commit()
 
     @app.context_processor

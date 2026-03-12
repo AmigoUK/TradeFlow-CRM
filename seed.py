@@ -4,13 +4,19 @@ from datetime import date, time, timedelta
 
 from app import create_app
 from extensions import db
-from models import Client, Contact, FollowUp, QuickFunction, DEFAULT_QUICK_FUNCTIONS, InteractionType, DEFAULT_INTERACTION_TYPES
+from models import (
+    Client, Contact, FollowUp, QuickFunction, DEFAULT_QUICK_FUNCTIONS,
+    InteractionType, DEFAULT_INTERACTION_TYPES,
+    CustomFieldDefinition, CustomFieldValue, DEFAULT_CUSTOM_FIELDS,
+)
 
 
 def seed():
     app = create_app()
     with app.app_context():
         # Clear existing data
+        CustomFieldValue.query.delete()
+        CustomFieldDefinition.query.delete()
         FollowUp.query.delete()
         Contact.query.delete()
         Client.query.delete()
@@ -21,6 +27,14 @@ def seed():
         # --- Interaction Types ---
         for i, it_data in enumerate(DEFAULT_INTERACTION_TYPES):
             db.session.add(InteractionType(sort_order=i, **it_data))
+        db.session.flush()
+
+        # --- Custom Field Definitions ---
+        custom_field_defs = []
+        for i, cf_data in enumerate(DEFAULT_CUSTOM_FIELDS):
+            cf = CustomFieldDefinition(sort_order=i, **cf_data)
+            db.session.add(cf)
+            custom_field_defs.append(cf)
         db.session.flush()
 
         # --- Quick Functions ---
@@ -211,6 +225,14 @@ def seed():
                       completed=True),
         ]
         db.session.add_all(followups)
+
+        # --- Custom Field Values (sample data for some clients) ---
+        # Address field (first definition)
+        addr_def = custom_field_defs[0]  # Address
+        linkedin_def = custom_field_defs[1]  # LinkedIn
+        db.session.add(CustomFieldValue(definition_id=addr_def.id, client_id=clients[0].id, value="14 Temple Row, Birmingham B2 5JR"))
+        db.session.add(CustomFieldValue(definition_id=addr_def.id, client_id=clients[2].id, value="Unit 7, MediaCity, Salford M50 2HE"))
+        db.session.add(CustomFieldValue(definition_id=linkedin_def.id, client_id=clients[2].id, value="https://linkedin.com/company/hargreaves-digital"))
 
         db.session.commit()
         print(f"Seeded {len(clients)} clients, {len(contacts)} contacts, {len(followups)} follow-ups.")
