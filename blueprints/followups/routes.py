@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 from flask import flash, jsonify, redirect, render_template, request, url_for
 
@@ -193,6 +193,41 @@ def complete_followup(id):
 
     flash(f"Follow-up marked as {status}.", "success")
     return redirect(request.referrer or url_for("followups.list_followups"))
+
+
+@followups_bp.route("/matrix")
+def matrix():
+    today = date.today()
+    tomorrow = today + timedelta(days=1)
+    show_completed = request.args.get("show_completed", "0").strip()
+
+    query = FollowUp.query.join(Client)
+    if show_completed != "1":
+        query = query.filter(FollowUp.completed == False)  # noqa: E712
+
+    followups = query.order_by(FollowUp.due_date).all()
+
+    do_first, schedule, delegate, eliminate = [], [], [], []
+    for fu in followups:
+        is_urgent = fu.due_date <= tomorrow
+        is_important = fu.priority == "high"
+        if is_urgent and is_important:
+            do_first.append(fu)
+        elif not is_urgent and is_important:
+            schedule.append(fu)
+        elif is_urgent and not is_important:
+            delegate.append(fu)
+        else:
+            eliminate.append(fu)
+
+    return render_template(
+        "followups/matrix.html",
+        do_first=do_first,
+        schedule=schedule,
+        delegate=delegate,
+        eliminate=eliminate,
+        show_completed=show_completed,
+    )
 
 
 @followups_bp.route("/<int:id>/delete", methods=["POST"])

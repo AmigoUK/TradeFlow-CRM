@@ -232,6 +232,43 @@
     }
 }
 
+/* Eisenhower Matrix */
+.matrix-header-do-first { background-color: #dc3545; }
+.matrix-header-schedule { background-color: #0d6efd; }
+.matrix-header-delegate { background-color: #fd7e14; }
+.matrix-header-eliminate { background-color: #6c757d; }
+
+.matrix-card { min-height: 200px; }
+
+.matrix-do-first { border-top: 4px solid #dc3545; }
+.matrix-schedule { border-top: 4px solid #0d6efd; }
+.matrix-delegate { border-top: 4px solid #fd7e14; }
+.matrix-eliminate { border-top: 4px solid #6c757d; }
+
+.matrix-body {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.matrix-item {
+    transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.matrix-item:hover {
+    transform: translateX(4px);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+
+.matrix-axis-label {
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-size: 0.8rem;
+}
+
+@media (max-width: 767.98px) {
+    .matrix-body { max-height: none; }
+}
+
 /* Quarterly overview */
 .quarter-card {
     transition: box-shadow 0.2s;
