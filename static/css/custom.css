@@ -132,3 +132,54 @@
     background: #fff3cd;
     border-left: 3px solid #dc3545;
 }
+
+/* Mobile responsive tables — stacked card layout */
+@media (max-width: 767.98px) {
+    .table-responsive table thead {
+        display: none;
+    }
+
+    .table-responsive table tbody tr {
+        display: block;
+        margin-bottom: 1rem;
+        border: 1px solid #dee2e6;
+        border-radius: 0.375rem;
+        padding: 0.5rem;
+        background: #fff;
+    }
+
+    .table-responsive table tbody tr.overdue {
+        border-left: 4px solid #dc3545;
+    }
+
+    .table-responsive table tbody td {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.4rem 0.75rem;
+        border: none;
+        border-bottom: 1px solid #f0f0f0;
+        text-align: right;
+    }
+
+    .table-responsive table tbody td:last-child {
+        border-bottom: none;
+    }
+
+    .table-responsive table tbody td::before {
+        content: attr(data-label);
+        font-weight: 600;
+        color: #6c757d;
+        text-align: left;
+        margin-right: 1rem;
+        flex-shrink: 0;
+    }
+
+    .table-responsive table tbody td[data-label="Actions"] {
+        justify-content: flex-end;
+    }
+
+    .table-responsive table tbody td[data-label="Actions"]::before {
+        display: none;
+    }
+}

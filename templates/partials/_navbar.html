@@ -44,6 +44,29 @@
                         <i class="bi bi-calendar-check me-1"></i>Follow-ups
                     </a>
                 </li>
+                <li class="nav-item dropdown ms-lg-2">
+                    <a class="nav-link dropdown-toggle btn btn-sm btn-outline-light px-3 py-1 mt-1" href="#"
+                       role="button" data-bs-toggle="dropdown">
+                        <i class="bi bi-plus-lg me-1"></i>Quick Add
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li>
+                            <a class="dropdown-item" href="{{ url_for('clients.create_client') }}">
+                                <i class="bi bi-building me-2"></i>New Client
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item" href="{{ url_for('contacts.create_contact') }}">
+                                <i class="bi bi-chat-dots me-2"></i>Log Interaction
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item" href="{{ url_for('followups.create_followup') }}">
+                                <i class="bi bi-calendar-check me-2"></i>Add Follow-up
+                            </a>
+                        </li>
+                    </ul>
+                </li>
             </ul>
         </div>
     </div>

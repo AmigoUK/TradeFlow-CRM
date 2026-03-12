@@ -88,7 +88,7 @@
                     {% endfor %}
                 </div>
                 {% else %}
-                <p class="text-muted text-center mb-0 py-3">No tasks due today.</p>
+                <p class="text-muted text-center mb-0 py-3">No tasks due today. <a href="{{ url_for('followups.create_followup') }}">Schedule one</a></p>
                 {% endif %}
             </div>
         </div>
@@ -110,7 +110,7 @@
                                 {{ fu.client.company_name }}
                             </a>
                             <br>
-                            <small class="text-danger">Due {{ fu.due_date.strftime('%d %b %Y') }}</small>
+                            <small class="text-danger">Due {{ fu.due_date|relative_date }}</small>
                             {% if fu.notes %}<br><small class="text-muted">{{ fu.notes[:40] }}{% if fu.notes|length > 40 %}...{% endif %}</small>{% endif %}
                         </div>
                         <div class="d-flex align-items-center gap-2">
@@ -155,7 +155,7 @@
                 <tbody>
                     {% for contact in recent_contacts %}
                     <tr>
-                        <td>{{ contact.date.strftime('%d %b %Y') }}</td>
+                        <td>{{ contact.date|relative_date }}</td>
                         <td>
                             <a href="{{ url_for('clients.detail_client', id=contact.client_id) }}" class="text-decoration-none">
                                 {{ contact.client.company_name }}
@@ -170,7 +170,7 @@
             </table>
         </div>
         {% else %}
-        <p class="text-muted text-center mb-0 py-3">No interactions logged yet.</p>
+        <p class="text-muted text-center mb-0 py-3">No interactions logged yet. <a href="{{ url_for('contacts.create_contact') }}">Log one</a></p>
         {% endif %}
     </div>
 </div>

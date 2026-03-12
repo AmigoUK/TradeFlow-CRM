@@ -51,16 +51,16 @@
         <tbody>
             {% for contact in contacts %}
             <tr>
-                <td>{{ contact.date.strftime('%d %b %Y') }}</td>
-                <td>
+                <td data-label="Date">{{ contact.date|relative_date }}</td>
+                <td data-label="Client">
                     <a href="{{ url_for('clients.detail_client', id=contact.client_id) }}" class="text-decoration-none">
                         {{ contact.client.company_name }}
                     </a>
                 </td>
-                <td><span class="badge badge-{{ contact.contact_type }}">{{ contact.contact_type|capitalize }}</span></td>
-                <td>{{ contact.notes[:60] }}{% if contact.notes|length > 60 %}...{% endif %}</td>
-                <td>{{ contact.outcome or '—' }}</td>
-                <td class="text-end">
+                <td data-label="Type"><span class="badge badge-{{ contact.contact_type }}">{{ contact.contact_type|capitalize }}</span></td>
+                <td data-label="Notes">{{ contact.notes[:60] }}{% if contact.notes|length > 60 %}...{% endif %}</td>
+                <td data-label="Outcome">{{ contact.outcome or '—' }}</td>
+                <td data-label="Actions" class="text-end">
                     <a href="{{ url_for('contacts.edit_contact', id=contact.id) }}" class="btn btn-sm btn-outline-secondary">
                         <i class="bi bi-pencil"></i>
                     </a>
@@ -80,7 +80,7 @@
 <div class="empty-state">
     <i class="bi bi-chat-dots d-block"></i>
     <h5>No interactions found</h5>
-    <p>{% if selected_type or date_from or date_to %}Try adjusting your filters.{% else %}Log your first client interaction to get started.{% endif %}</p>
+    <p>{% if selected_type or date_from or date_to %}Try adjusting your filters.{% else %}Log your first client interaction to get started. <a href="{{ url_for('contacts.create_contact') }}">Log one now</a>{% endif %}</p>
 </div>
 {% endif %}
 {% endblock %}

@@ -51,19 +51,19 @@
         <tbody>
             {% for client in clients %}
             <tr>
-                <td>
+                <td data-label="Company">
                     <a href="{{ url_for('clients.detail_client', id=client.id) }}" class="text-decoration-none fw-semibold">
                         {{ client.company_name }}
                     </a>
                 </td>
-                <td>{{ client.contact_person or '—' }}</td>
-                <td>{{ client.industry or '—' }}</td>
-                <td>
+                <td data-label="Contact Person">{{ client.contact_person or '—' }}</td>
+                <td data-label="Industry">{{ client.industry or '—' }}</td>
+                <td data-label="Status">
                     <span class="badge badge-{{ client.status }}">{{ client.status|capitalize }}</span>
                 </td>
-                <td>{{ client.last_contact|relative_date if client.last_contact else '—' }}</td>
-                <td>{{ client.next_followup|relative_date if client.next_followup else '—' }}</td>
-                <td class="text-end">
+                <td data-label="Last Contact">{{ client.last_contact|relative_date if client.last_contact else '—' }}</td>
+                <td data-label="Next Follow-up">{{ client.next_followup|relative_date if client.next_followup else '—' }}</td>
+                <td data-label="Actions" class="text-end">
                     <a href="{{ url_for('clients.edit_client', id=client.id) }}" class="btn btn-sm btn-outline-secondary">
                         <i class="bi bi-pencil"></i>
                     </a>
@@ -83,7 +83,7 @@
 <div class="empty-state">
     <i class="bi bi-building d-block"></i>
     <h5>No clients found</h5>
-    <p>{% if q or status %}Try adjusting your search or filters.{% else %}Get started by adding your first client.{% endif %}</p>
+    <p>{% if q or status %}Try adjusting your search or filters.{% else %}Get started by adding your first client. <a href="{{ url_for('clients.create_client') }}">Add one now</a>{% endif %}</p>
 </div>
 {% endif %}
 {% endblock %}

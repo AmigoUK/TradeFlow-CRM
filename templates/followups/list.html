@@ -57,15 +57,15 @@
         <tbody>
             {% for fu in followups %}
             <tr class="{% if fu.is_overdue %}overdue{% endif %}">
-                <td>{{ fu.due_date.strftime('%d %b %Y') }}</td>
-                <td>
+                <td data-label="Due Date">{{ fu.due_date|relative_date }}</td>
+                <td data-label="Client">
                     <a href="{{ url_for('clients.detail_client', id=fu.client_id) }}" class="text-decoration-none">
                         {{ fu.client.company_name }}
                     </a>
                 </td>
-                <td><span class="badge badge-{{ fu.priority }}">{{ fu.priority|capitalize }}</span></td>
-                <td>{{ fu.notes[:60] }}{% if fu.notes|length > 60 %}...{% endif %}</td>
-                <td>
+                <td data-label="Priority"><span class="badge badge-{{ fu.priority }}">{{ fu.priority|capitalize }}</span></td>
+                <td data-label="Notes">{{ fu.notes[:60] }}{% if fu.notes|length > 60 %}...{% endif %}</td>
+                <td data-label="Status">
                     {% if fu.completed %}
                         <span class="badge bg-success">Completed</span>
                     {% elif fu.is_overdue %}
@@ -74,7 +74,7 @@
                         <span class="badge bg-secondary">Pending</span>
                     {% endif %}
                 </td>
-                <td class="text-end">
+                <td data-label="Actions" class="text-end">
                     <form method="POST" action="{{ url_for('followups.complete_followup', id=fu.id) }}" class="d-inline">
                         <button type="submit" class="btn btn-sm btn-outline-success" title="{{ 'Reopen' if fu.completed else 'Mark complete' }}">
                             <i class="bi bi-{{ 'arrow-counterclockwise' if fu.completed else 'check-lg' }}"></i>
@@ -99,7 +99,7 @@
 <div class="empty-state">
     <i class="bi bi-calendar-check d-block"></i>
     <h5>No follow-ups found</h5>
-    <p>{% if selected_priority or show_overdue or show_completed %}Try adjusting your filters.{% else %}Schedule your first follow-up to stay on top of tasks.{% endif %}</p>
+    <p>{% if selected_priority or show_overdue or show_completed %}Try adjusting your filters.{% else %}Schedule your first follow-up to stay on top of tasks. <a href="{{ url_for('followups.create_followup') }}">Add one now</a>{% endif %}</p>
 </div>
 {% endif %}
 {% endblock %}
