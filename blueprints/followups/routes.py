@@ -1,6 +1,6 @@
 from datetime import date, datetime
 
-from flask import flash, redirect, render_template, request, url_for
+from flask import flash, jsonify, redirect, render_template, request, url_for
 
 from blueprints.followups import followups_bp
 from extensions import db
@@ -145,6 +145,16 @@ def complete_followup(id):
     followup.completed = not followup.completed
     db.session.commit()
     status = "completed" if followup.completed else "reopened"
+
+    if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+        return jsonify({
+            "status": status,
+            "completed": followup.completed,
+            "clientId": followup.client_id,
+            "clientName": followup.client.company_name,
+            "notes": followup.notes or "",
+        })
+
     flash(f"Follow-up marked as {status}.", "success")
     return redirect(request.referrer or url_for("followups.list_followups"))
 

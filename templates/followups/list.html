@@ -75,7 +75,12 @@
                     {% endif %}
                 </td>
                 <td data-label="Actions" class="text-end">
-                    <form method="POST" action="{{ url_for('followups.complete_followup', id=fu.id) }}" class="d-inline">
+                    <form method="POST" action="{{ url_for('followups.complete_followup', id=fu.id) }}" class="d-inline complete-followup-form"
+                          data-followup-id="{{ fu.id }}"
+                          data-client-id="{{ fu.client_id }}"
+                          data-client-name="{{ fu.client.company_name }}"
+                          data-notes="{{ fu.notes or '' }}"
+                          data-completed="{{ 'true' if fu.completed else 'false' }}">
                         <button type="submit" class="btn btn-sm btn-outline-success" title="{{ 'Reopen' if fu.completed else 'Mark complete' }}">
                             <i class="bi bi-{{ 'arrow-counterclockwise' if fu.completed else 'check-lg' }}"></i>
                         </button>

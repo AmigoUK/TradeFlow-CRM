@@ -28,7 +28,12 @@
                 <br><small class="text-muted">{{ fu.notes[:80] }}{% if fu.notes|length > 80 %}...{% endif %}</small>
             {% endif %}
         </div>
-        <form method="POST" action="{{ url_for('followups.complete_followup', id=fu.id) }}" class="d-inline">
+        <form method="POST" action="{{ url_for('followups.complete_followup', id=fu.id) }}" class="d-inline complete-followup-form"
+              data-followup-id="{{ fu.id }}"
+              data-client-id="{{ fu.client_id }}"
+              data-client-name="{{ fu.client.company_name }}"
+              data-notes="{{ fu.notes or '' }}"
+              data-completed="false">
             <button type="submit" class="btn btn-sm btn-outline-success" title="Mark complete">
                 <i class="bi bi-check-lg"></i>
             </button>

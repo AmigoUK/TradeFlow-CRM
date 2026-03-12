@@ -77,6 +77,8 @@ def create_contact():
         return redirect(url_for("clients.detail_client", id=contact.client_id))
 
     client_id = request.args.get("client_id")
+    prefill_notes = request.args.get("notes", "")
+    prefill_date = request.args.get("date", date.today().isoformat())
     clients = Client.query.order_by(Client.company_name).all()
     return render_template(
         "contacts/form.html",
@@ -84,7 +86,8 @@ def create_contact():
         clients=clients,
         contact_types=CONTACT_TYPES,
         selected_client_id=int(client_id) if client_id else None,
-        today=date.today().isoformat(),
+        today=prefill_date,
+        prefill_notes=prefill_notes,
     )
 
 

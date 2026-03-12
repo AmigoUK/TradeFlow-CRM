@@ -78,7 +78,13 @@
                         </div>
                         <div class="d-flex align-items-center gap-2">
                             <span class="badge badge-{{ fu.priority }}">{{ fu.priority|capitalize }}</span>
-                            <form method="POST" action="{{ url_for('followups.complete_followup', id=fu.id) }}">
+                            <form method="POST" action="{{ url_for('followups.complete_followup', id=fu.id) }}"
+                                  class="complete-followup-form"
+                                  data-followup-id="{{ fu.id }}"
+                                  data-client-id="{{ fu.client_id }}"
+                                  data-client-name="{{ fu.client.company_name }}"
+                                  data-notes="{{ fu.notes or '' }}"
+                                  data-completed="false">
                                 <button type="submit" class="btn btn-sm btn-outline-success" title="Mark complete">
                                     <i class="bi bi-check-lg"></i>
                                 </button>
@@ -115,7 +121,13 @@
                         </div>
                         <div class="d-flex align-items-center gap-2">
                             <span class="badge badge-{{ fu.priority }}">{{ fu.priority|capitalize }}</span>
-                            <form method="POST" action="{{ url_for('followups.complete_followup', id=fu.id) }}">
+                            <form method="POST" action="{{ url_for('followups.complete_followup', id=fu.id) }}"
+                                  class="complete-followup-form"
+                                  data-followup-id="{{ fu.id }}"
+                                  data-client-id="{{ fu.client_id }}"
+                                  data-client-name="{{ fu.client.company_name }}"
+                                  data-notes="{{ fu.notes or '' }}"
+                                  data-completed="false">
                                 <button type="submit" class="btn btn-sm btn-outline-success" title="Mark complete">
                                     <i class="bi bi-check-lg"></i>
                                 </button>

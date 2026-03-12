@@ -54,7 +54,7 @@
 
             <div class="mb-3">
                 <label for="notes" class="form-label">Notes</label>
-                <textarea class="form-control" id="notes" name="notes" rows="4">{{ contact.notes if contact else '' }}</textarea>
+                <textarea class="form-control" id="notes" name="notes" rows="4">{{ contact.notes if contact else (prefill_notes or '') }}</textarea>
             </div>
 
             <div class="mb-3">

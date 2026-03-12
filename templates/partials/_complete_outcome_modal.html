@@ -1,0 +1,25 @@
+<div class="modal fade" id="completeOutcomeModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title"><i class="bi bi-check-circle me-2"></i>Follow-up Completed</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>
+                    Follow-up for <strong id="outcomeClientName"></strong> has been marked as completed.
+                </p>
+                <div id="outcomeNotesPreview" class="text-muted small mb-3" style="display:none;">
+                    <strong>Notes:</strong> <span id="outcomeNotesText"></span>
+                </div>
+                <p class="mb-0 text-muted">Would you like to log the outcome of this interaction?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Done</button>
+                <a href="#" id="outcomeLogInteraction" class="btn btn-primary">
+                    <i class="bi bi-chat-dots me-1"></i>Log Interaction
+                </a>
+            </div>
+        </div>
+    </div>
+</div>

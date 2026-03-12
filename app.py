@@ -5,7 +5,7 @@ from flask import Flask
 from config import Config
 from extensions import db
 
-APP_VERSION = "0.4.0-beta"
+APP_VERSION = "0.5.0-beta"
 
 
 def relative_date(d):

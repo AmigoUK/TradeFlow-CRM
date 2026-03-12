@@ -145,7 +145,12 @@
                         </div>
                         <div class="d-flex gap-1">
                             {% if item.type == 'followup' and not item.completed %}
-                            <form method="POST" action="{{ item.complete_url }}" class="d-inline">
+                            <form method="POST" action="{{ item.complete_url }}" class="d-inline complete-followup-form"
+                                  data-followup-id="{{ item.obj.id }}"
+                                  data-client-id="{{ client.id }}"
+                                  data-client-name="{{ client.company_name }}"
+                                  data-notes="{{ item.notes or '' }}"
+                                  data-completed="false">
                                 <button type="submit" class="btn btn-sm btn-outline-success" title="Mark complete">
                                     <i class="bi bi-check-lg"></i>
                                 </button>
