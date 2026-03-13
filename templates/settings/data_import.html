@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+{% block title %}Data Import — NextStep CRM{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{{ url_for('settings.settings_page') }}">Settings</a></li>
+        <li class="breadcrumb-item active">Data Import</li>
+    </ol>
+</nav>
+
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="bi bi-upload me-2"></i>Import CSV Data</h5>
+    </div>
+    <div class="card-body">
+        <form method="POST" enctype="multipart/form-data" action="{{ url_for('data_io.process_import') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <div class="mb-3">
+                <label class="form-label fw-semibold">Entity Type <span class="text-danger">*</span></label>
+                <div>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="entity_type"
+                               id="entityClients" value="clients"
+                               {{ 'checked' if entity_type == 'clients' or not entity_type }}>
+                        <label class="form-check-label" for="entityClients">
+                            <i class="bi bi-building me-1"></i>Clients
+                        </label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="entity_type"
+                               id="entityContacts" value="contacts"
+                               {{ 'checked' if entity_type == 'contacts' }}>
+                        <label class="form-check-label" for="entityContacts">
+                            <i class="bi bi-chat-dots me-1"></i>Contacts
+                        </label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="entity_type"
+                               id="entityFollowups" value="followups"
+                               {{ 'checked' if entity_type == 'followups' }}>
+                        <label class="form-check-label" for="entityFollowups">
+                            <i class="bi bi-calendar-check me-1"></i>Follow-ups
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label for="csvFile" class="form-label fw-semibold">CSV File <span class="text-danger">*</span></label>
+                <input type="file" class="form-control" id="csvFile" name="csv_file" accept=".csv">
+                <small class="text-muted">
+                    Upload a CSV file. Download a
+                    <a href="{{ url_for('data_io.download_template', entity='clients') }}">clients</a>,
+                    <a href="{{ url_for('data_io.download_template', entity='contacts') }}">contacts</a>, or
+                    <a href="{{ url_for('data_io.download_template', entity='followups') }}">follow-ups</a>
+                    template to get started.
+                </small>
+            </div>
+
+            <button type="submit" class="btn btn-primary">
+                <i class="bi bi-upload me-1"></i>Import
+            </button>
+        </form>
+    </div>
+</div>
+
+{% if result is defined and result %}
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="bi bi-clipboard-data me-2"></i>Import Results</h5>
+    </div>
+    <div class="card-body">
+        {% if result.imported > 0 %}
+        <div class="alert alert-success">
+            <i class="bi bi-check-circle me-1"></i>
+            Successfully imported <strong>{{ result.imported }}</strong> record{{ 's' if result.imported != 1 }}.
+        </div>
+        {% endif %}
+
+        {% for warning in result.warnings %}
+        <div class="alert alert-warning">
+            <i class="bi bi-exclamation-triangle me-1"></i>{{ warning }}
+        </div>
+        {% endfor %}
+
+        {% if result.skipped > 0 %}
+        <div class="alert alert-danger">
+            <i class="bi bi-x-circle me-1"></i>
+            <strong>{{ result.skipped }}</strong> row{{ 's' if result.skipped != 1 }} skipped due to errors.
+        </div>
+
+        <div class="table-responsive mb-3">
+            <table class="table table-sm table-bordered">
+                <thead class="table-light">
+                    <tr>
+                        <th>Row</th>
+                        <th>Data Preview</th>
+                        <th>Error</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for err in result.errors[:50] %}
+                    <tr>
+                        <td>{{ err.row }}</td>
+                        <td><small class="text-muted">{{ err.data | tojson | truncate(100) }}</small></td>
+                        <td class="text-danger">{{ err.error }}</td>
+                    </tr>
+                    {% endfor %}
+                    {% if result.errors | length > 50 %}
+                    <tr>
+                        <td colspan="3" class="text-muted text-center">
+                            … and {{ result.errors | length - 50 }} more errors.
+                            Download the error report for the full list.
+                        </td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+
+        <a href="{{ url_for('data_io.download_errors') }}" class="btn btn-outline-danger btn-sm">
+            <i class="bi bi-download me-1"></i>Download Error Report
+        </a>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
+<a href="{{ url_for('settings.settings_page') }}" class="btn btn-outline-secondary">
+    <i class="bi bi-arrow-left me-1"></i>Back to Settings
+</a>
+{% endblock %}
