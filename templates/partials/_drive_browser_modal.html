@@ -1,0 +1,147 @@
+<!-- Google Drive Browser Modal -->
+<div class="modal fade" id="driveBrowserModal" tabindex="-1" aria-labelledby="driveBrowserModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="driveBrowserModalLabel">
+                    <i class="bi bi-cloud me-1"></i>Link from Google Drive
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="drive-file-list" class="list-group">
+                    <div class="text-center py-3">
+                        <div class="spinner-border spinner-border-sm" role="status"></div>
+                        <span class="ms-2">Loading files...</span>
+                    </div>
+                </div>
+                <button id="drive-load-more" class="btn btn-outline-secondary btn-sm w-100 mt-2 d-none">
+                    Load more files
+                </button>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+(function() {
+    var nextPageToken = null;
+    var driveModal = document.getElementById('driveBrowserModal');
+    if (!driveModal) return;
+
+    driveModal.addEventListener('show.bs.modal', function() {
+        nextPageToken = null;
+        loadDriveFiles(true);
+    });
+
+    document.getElementById('drive-load-more').addEventListener('click', function() {
+        loadDriveFiles(false);
+    });
+
+    function createFileItem(f) {
+        var item = document.createElement('div');
+        item.className = 'list-group-item list-group-item-action d-flex justify-content-between align-items-center';
+
+        var info = document.createElement('div');
+        var icon = document.createElement('i');
+        icon.className = 'bi bi-file-earmark me-2';
+        var nameEl = document.createElement('strong');
+        nameEl.textContent = f.name;
+        var br = document.createElement('br');
+        var mimeEl = document.createElement('small');
+        mimeEl.className = 'text-muted';
+        mimeEl.textContent = f.mimeType || '';
+        info.appendChild(icon);
+        info.appendChild(nameEl);
+        info.appendChild(br);
+        info.appendChild(mimeEl);
+
+        var form = document.createElement('form');
+        form.action = '{{ url_for("google.drive_link") }}';
+        form.method = 'POST';
+
+        var fields = [
+            {name: 'csrf_token', value: '{{ csrf_token() }}'},
+            {name: 'google_file_id', value: f.id},
+            {name: 'filename', value: f.name},
+            {name: 'google_url', value: f.webViewLink || ''},
+            {name: 'mime_type', value: f.mimeType || ''},
+            {name: 'client_id', value: '{{ client_id }}'}
+        ];
+        fields.forEach(function(fd) {
+            var input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = fd.name;
+            input.value = fd.value;
+            form.appendChild(input);
+        });
+
+        var btn = document.createElement('button');
+        btn.type = 'submit';
+        btn.className = 'btn btn-sm btn-outline-primary';
+        var btnIcon = document.createElement('i');
+        btnIcon.className = 'bi bi-link-45deg me-1';
+        btn.appendChild(btnIcon);
+        btn.appendChild(document.createTextNode('Link'));
+        form.appendChild(btn);
+
+        item.appendChild(info);
+        item.appendChild(form);
+        return item;
+    }
+
+    function loadDriveFiles(reset) {
+        var list = document.getElementById('drive-file-list');
+        var loadMore = document.getElementById('drive-load-more');
+
+        if (reset) {
+            list.textContent = '';
+            var spinner = document.createElement('div');
+            spinner.className = 'text-center py-3';
+            spinner.textContent = 'Loading...';
+            list.appendChild(spinner);
+        }
+
+        var url = '{{ url_for("google.drive_browse") }}';
+        if (nextPageToken) url += '?page_token=' + nextPageToken;
+
+        fetch(url)
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (reset) list.textContent = '';
+
+                if (data.files.length === 0 && reset) {
+                    var empty = document.createElement('div');
+                    empty.className = 'text-center text-muted py-3';
+                    empty.textContent = 'No files found.';
+                    list.appendChild(empty);
+                    loadMore.classList.add('d-none');
+                    return;
+                }
+
+                data.files.forEach(function(f) {
+                    list.appendChild(createFileItem(f));
+                });
+
+                nextPageToken = data.nextPageToken;
+                if (nextPageToken) {
+                    loadMore.classList.remove('d-none');
+                } else {
+                    loadMore.classList.add('d-none');
+                }
+            })
+            .catch(function() {
+                if (reset) {
+                    list.textContent = '';
+                    var err = document.createElement('div');
+                    err.className = 'text-center text-danger py-3';
+                    err.textContent = 'Failed to load files.';
+                    list.appendChild(err);
+                }
+            });
+    }
+})();
+</script>

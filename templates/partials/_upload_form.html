@@ -1,6 +1,11 @@
 <button type="button" class="btn btn-sm btn-outline-primary w-100" data-bs-toggle="modal" data-bs-target="#uploadAttachmentModal">
     <i class="bi bi-upload me-1"></i>Upload File
 </button>
+{% if google_connected %}
+<button type="button" class="btn btn-sm btn-outline-info w-100 mt-1" data-bs-toggle="modal" data-bs-target="#driveBrowserModal">
+    <i class="bi bi-cloud me-1"></i>Link from Google Drive
+</button>
+{% endif %}
 
 <!-- Upload Attachment Modal -->
 <div class="modal fade" id="uploadAttachmentModal" tabindex="-1" aria-labelledby="uploadAttachmentModalLabel" aria-hidden="true">
@@ -22,6 +27,25 @@
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
+                    {% if google_connected %}
+                    <div class="mb-3">
+                        <label class="form-label">Storage</label>
+                        <div class="d-flex gap-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="storage_type" id="storage-local" value="local" checked>
+                                <label class="form-check-label" for="storage-local">
+                                    <i class="bi bi-hdd me-1"></i>Store locally
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="storage_type" id="storage-drive" value="drive">
+                                <label class="form-check-label" for="storage-drive">
+                                    <i class="bi bi-cloud me-1"></i>Upload to Google Drive
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
                     <div class="mb-3">
                         <label for="upload-file" class="form-label">File <span class="text-danger">*</span></label>
                         <input type="file" class="form-control" id="upload-file" name="file" required>

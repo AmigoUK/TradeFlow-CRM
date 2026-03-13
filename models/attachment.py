@@ -35,6 +35,8 @@ class Attachment(db.Model):
     category_id = db.Column(
         db.Integer, db.ForeignKey("attachment_categories.id"), nullable=True
     )
+    storage_type = db.Column(db.String(10), nullable=False, default="local")
+    google_drive_file_id = db.Column(db.Integer, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     tags = db.relationship("AttachmentTag", secondary=attachment_tag_map, backref="attachments", lazy="joined")

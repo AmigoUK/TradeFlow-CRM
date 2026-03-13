@@ -18,6 +18,7 @@ class FollowUp(db.Model):
     completed = db.Column(db.Boolean, default=False)
     notes = db.Column(db.Text, default="")
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
+    meet_link = db.Column(db.String(300), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     attachments = db.relationship(

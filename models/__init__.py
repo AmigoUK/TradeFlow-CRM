@@ -9,3 +9,9 @@ from models.attachment_category import AttachmentCategory, DEFAULT_ATTACHMENT_CA
 from models.attachment_tag import AttachmentTag, DEFAULT_ATTACHMENT_TAGS  # noqa: F401
 from models.attachment import Attachment  # noqa: F401
 from models.user import User, ROLES  # noqa: F401
+from models.google_oauth_config import GoogleOAuthConfig as GoogleOAuthConfig  # noqa: F401
+from models.google_credential import GoogleCredential as GoogleCredential  # noqa: F401
+from models.google_calendar_sync import GoogleCalendarSync as GoogleCalendarSync  # noqa: F401
+from models.google_doc import GoogleDoc as GoogleDoc  # noqa: F401
+from models.doc_template import DocTemplate as DocTemplate  # noqa: F401
+from models.google_drive_file import GoogleDriveFile as GoogleDriveFile  # noqa: F401

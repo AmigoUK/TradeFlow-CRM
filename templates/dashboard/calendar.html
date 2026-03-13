@@ -77,6 +77,11 @@
             <div class="calendar-legend-item">
                 <span class="calendar-legend-swatch" style="background:#fd7e14;"></span> Meeting
             </div>
+            {% if google_connected %}
+            <div class="calendar-legend-item">
+                <span class="calendar-legend-swatch" style="background:#4285F4;"></span> Google Calendar
+            </div>
+            {% endif %}
         </div>
     </div>
 </div>
@@ -102,12 +107,22 @@ document.addEventListener("DOMContentLoaded", function () {
             week: "Week",
             list: "List"
         },
-        events: {
-            url: "{{ url_for('dashboard.api_events') }}",
-            failure: function () {
-                alert("Failed to load calendar events.");
-            }
-        },
+        eventSources: [
+            {
+                url: "{{ url_for('dashboard.api_events') }}",
+                failure: function () {
+                    console.error("Failed to load CRM calendar events.");
+                }
+            },
+            {% if google_connected %}
+            {
+                url: "{{ url_for('google.google_calendar_events') }}",
+                failure: function () {
+                    console.error("Failed to load Google Calendar events.");
+                }
+            },
+            {% endif %}
+        ],
         eventClick: function (info) {
             var props = info.event.extendedProps;
             if (props.clientId) {

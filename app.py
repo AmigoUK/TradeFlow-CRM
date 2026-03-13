@@ -65,9 +65,9 @@ def days_overdue(d):
     return (today - d).days
 
 
-def create_app():
+def create_app(config_class=None):
     app = Flask(__name__)
-    app.config.from_object(Config)
+    app.config.from_object(config_class or Config)
 
     db.init_app(app)
 
@@ -100,6 +100,8 @@ def create_app():
     from blueprints.settings import settings_bp
     from blueprints.attachments import attachments_bp
     from blueprints.users import users_bp
+    from blueprints.data_io import data_io_bp
+    from blueprints.google import google_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(dashboard_bp)
@@ -109,6 +111,8 @@ def create_app():
     app.register_blueprint(settings_bp, url_prefix="/settings")
     app.register_blueprint(attachments_bp, url_prefix="/attachments")
     app.register_blueprint(users_bp, url_prefix="/users")
+    app.register_blueprint(data_io_bp, url_prefix="/settings/data")
+    app.register_blueprint(google_bp, url_prefix="/google")
 
     # Error handlers
     @app.errorhandler(403)
@@ -124,6 +128,10 @@ def create_app():
             AttachmentTag, DEFAULT_ATTACHMENT_TAGS,
             Attachment,
             User, ROLES,
+            GoogleOAuthConfig, GoogleCredential,
+            GoogleCalendarSync,
+            GoogleDoc, DocTemplate,
+            GoogleDriveFile,
         )
         db.create_all()
         os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
@@ -136,6 +144,26 @@ def create_app():
                 db.session.execute(db.text(
                     f"ALTER TABLE {table_name} ADD COLUMN user_id INTEGER REFERENCES users(id)"
                 ))
+
+        # ── Schema migration: add meet_link columns ──────────
+        for table_name in ("followups", "contacts"):
+            columns = [col["name"] for col in inspector.get_columns(table_name)]
+            if "meet_link" not in columns:
+                db.session.execute(db.text(
+                    f"ALTER TABLE {table_name} ADD COLUMN meet_link VARCHAR(300)"
+                ))
+
+        # ── Schema migration: add storage_type and google_drive_file_id to attachments ──
+        att_columns = [col["name"] for col in inspector.get_columns("attachments")]
+        if "storage_type" not in att_columns:
+            db.session.execute(db.text(
+                "ALTER TABLE attachments ADD COLUMN storage_type VARCHAR(10) DEFAULT 'local'"
+            ))
+        if "google_drive_file_id" not in att_columns:
+            db.session.execute(db.text(
+                "ALTER TABLE attachments ADD COLUMN google_drive_file_id INTEGER"
+            ))
+
         db.session.commit()
 
         # ── Seed default admin user if no users exist ───────────
@@ -195,12 +223,25 @@ def create_app():
 
     @app.context_processor
     def inject_globals():
+        from flask_login import current_user
         from models import AppSettings, InteractionType
+        from blueprints.google.google_service import is_google_enabled, is_google_connected
         settings = AppSettings.get()
         active_types = InteractionType.query.filter_by(is_active=True).order_by(
             InteractionType.sort_order, InteractionType.id
         ).all()
         all_types = InteractionType.query.all()
+
+        g_enabled = is_google_enabled()
+        g_connected = False
+        g_email = None
+        if g_enabled and current_user and current_user.is_authenticated:
+            from models.google_credential import GoogleCredential
+            cred = GoogleCredential.query.filter_by(user_id=current_user.id, is_valid=True).first()
+            if cred:
+                g_connected = True
+                g_email = cred.google_email
+
         return {
             "app_theme": settings.theme,
             "app_sticky_navbar": settings.sticky_navbar,
@@ -209,11 +250,16 @@ def create_app():
             "app_back_to_top": settings.back_to_top,
             "interaction_types_map": {t.label: {"icon": t.icon, "colour": t.colour} for t in all_types},
             "active_interaction_types": active_types,
+            "google_enabled": g_enabled,
+            "google_connected": g_connected,
+            "google_email": g_email,
         }
 
     return app
 
 
 if __name__ == "__main__":
+    import warnings
+    warnings.filterwarnings("ignore", message="resource_tracker:.*semaphore", category=UserWarning)
     app = create_app()
     app.run(debug=True, port=5001)

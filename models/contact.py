@@ -16,6 +16,7 @@ class Contact(db.Model):
     notes = db.Column(db.Text, default="")
     outcome = db.Column(db.String(200), default="")
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
+    meet_link = db.Column(db.String(300), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     attachments = db.relationship(

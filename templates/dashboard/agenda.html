@@ -27,6 +27,11 @@
             {% if fu.notes %}
                 <br><small class="text-muted">{{ fu.notes[:80] }}{% if fu.notes|length > 80 %}...{% endif %}</small>
             {% endif %}
+            {% if fu.meet_link %}
+                <a href="{{ fu.meet_link }}" target="_blank" rel="noopener" class="btn btn-sm btn-outline-success ms-2">
+                    <i class="bi bi-camera-video me-1"></i>Join
+                </a>
+            {% endif %}
         </div>
         <form method="POST" action="{{ url_for('followups.complete_followup', id=fu.id) }}" class="d-inline complete-followup-form"
               data-followup-id="{{ fu.id }}"

@@ -7,7 +7,7 @@ from blueprints.settings import settings_bp
 from extensions import db
 from models import (
     QuickFunction, AppSettings, InteractionType, Contact, CustomFieldDefinition,
-    AttachmentCategory, AttachmentTag, Attachment,
+    AttachmentCategory, AttachmentTag, Attachment, GoogleOAuthConfig, DocTemplate,
 )
 
 
@@ -34,6 +34,8 @@ def settings_page():
         AttachmentTag.sort_order, AttachmentTag.id
     ).all()
     settings = AppSettings.get()
+    google_config = GoogleOAuthConfig.get()
+    doc_templates = DocTemplate.query.order_by(DocTemplate.sort_order, DocTemplate.id).all()
     return render_template(
         "settings/index.html",
         quick_functions=quick_functions,
@@ -42,6 +44,8 @@ def settings_page():
         attachment_categories=attachment_categories,
         attachment_tags=attachment_tags,
         settings=settings,
+        google_config=google_config,
+        doc_templates=doc_templates,
     )
 
 

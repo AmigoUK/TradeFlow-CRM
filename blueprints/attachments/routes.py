@@ -64,6 +64,52 @@ def upload():
 
     contact_id = request.form.get("contact_id")
     followup_id = request.form.get("followup_id")
+    storage_type = request.form.get("storage_type", "local")
+
+    # Google Drive upload path
+    if storage_type == "drive":
+        try:
+            from blueprints.google.google_service import is_google_connected
+            from flask_login import current_user as cu
+            if is_google_connected():
+                from blueprints.google.drive_service import upload_file_to_drive
+                mime_type = file.content_type or "application/octet-stream"
+                file_id, web_url = upload_file_to_drive(file, file.filename, mime_type, cu.id)
+                if file_id:
+                    from models.google_drive_file import GoogleDriveFile
+                    original_name = secure_filename(file.filename) or "unnamed_file"
+                    attachment = Attachment(
+                        filename=original_name,
+                        stored_filename=f"drive:{file_id}",
+                        description=request.form.get("description", "").strip() or None,
+                        file_size=0,
+                        mime_type=mime_type,
+                        client_id=client_id,
+                        contact_id=int(contact_id) if contact_id else None,
+                        followup_id=int(followup_id) if followup_id else None,
+                        category_id=int(request.form.get("category_id")) if request.form.get("category_id") else None,
+                        storage_type="drive",
+                    )
+                    db.session.add(attachment)
+                    db.session.flush()
+                    drive_file = GoogleDriveFile(
+                        google_file_id=file_id,
+                        filename=original_name,
+                        mime_type=mime_type,
+                        google_url=web_url,
+                        client_id=client_id,
+                        attachment_id=attachment.id,
+                        uploaded_by_user_id=cu.id,
+                    )
+                    db.session.add(drive_file)
+                    db.session.commit()
+                    if _is_ajax():
+                        return jsonify({"ok": True, "message": f"File '{original_name}' uploaded to Google Drive."})
+                    flash(f"File '{original_name}' uploaded to Google Drive.", "success")
+                    return redirect(request.referrer or url_for("clients.detail_client", id=client_id))
+        except Exception:
+            pass
+        flash("Failed to upload to Google Drive. Saving locally instead.", "warning")
 
     stored_name, file_size, mime_type, original_name = _save_file(file, client_id)
 

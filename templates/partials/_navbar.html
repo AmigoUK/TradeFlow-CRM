@@ -124,6 +124,29 @@
                                 {{ current_user.username }}
                             </span>
                         </li>
+                        {% if google_enabled %}
+                        <li><hr class="dropdown-divider"></li>
+                        <li>
+                            {% if google_connected %}
+                            <span class="dropdown-item-text">
+                                <i class="bi bi-google me-1 text-success"></i>
+                                <small>{{ google_email or 'Connected' }}</small>
+                            </span>
+                            </li>
+                            <li>
+                            <form method="POST" action="{{ url_for('google.disconnect') }}">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit" class="dropdown-item text-danger">
+                                    <i class="bi bi-x-circle me-2"></i>Disconnect Google
+                                </button>
+                            </form>
+                            {% else %}
+                            <a class="dropdown-item" href="{{ url_for('google.connect') }}">
+                                <i class="bi bi-google me-2"></i>Connect Google Account
+                            </a>
+                            {% endif %}
+                        </li>
+                        {% endif %}
                         <li><hr class="dropdown-divider"></li>
                         <li>
                             <form method="POST" action="{{ url_for('auth.logout') }}">

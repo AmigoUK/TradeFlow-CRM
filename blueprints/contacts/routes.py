@@ -140,6 +140,16 @@ def create_contact():
 
         db.session.commit()
 
+        # Google Calendar sync hook
+        if "sync_to_google" in request.form:
+            try:
+                from blueprints.google.google_service import is_google_connected
+                if is_google_connected():
+                    from blueprints.google.calendar_service import sync_contact_to_calendar
+                    sync_contact_to_calendar(contact, current_user.id)
+            except Exception:
+                pass
+
         if _is_ajax():
             return jsonify({
                 "ok": True,
@@ -227,6 +237,19 @@ def edit_contact(id):
             _save_contact_file(file, int(client_id), contact.id, description)
 
         db.session.commit()
+
+        # Google Calendar sync hook — update synced event
+        try:
+            from models.google_calendar_sync import GoogleCalendarSync
+            sync = GoogleCalendarSync.query.filter_by(
+                contact_id=contact.id, user_id=current_user.id
+            ).first()
+            if sync:
+                from blueprints.google.calendar_service import sync_contact_to_calendar
+                sync_contact_to_calendar(contact, current_user.id)
+        except Exception:
+            pass
+
         flash("Interaction updated successfully.", "success")
         return redirect(url_for("clients.detail_client", id=contact.client_id))
 
@@ -271,6 +294,19 @@ def delete_contact(id):
     if not can_access_record(contact):
         abort(403)
     client_id = contact.client_id
+
+    # Google Calendar sync hook — delete synced event
+    try:
+        from models.google_calendar_sync import GoogleCalendarSync
+        sync = GoogleCalendarSync.query.filter_by(
+            contact_id=contact.id, user_id=current_user.id
+        ).first()
+        if sync:
+            from blueprints.google.calendar_service import delete_calendar_event
+            delete_calendar_event(sync, current_user.id)
+    except Exception:
+        pass
+
     db.session.delete(contact)
     db.session.commit()
     flash("Interaction deleted successfully.", "success")
