@@ -12,7 +12,7 @@ window.showToast = function (message, category) {
     if (!container) {
         container = document.createElement("div");
         container.className = "toast-container position-fixed top-0 end-0 p-3";
-        container.style.zIndex = "1080";
+        container.style.zIndex = "1090";
         document.body.appendChild(container);
     }
 

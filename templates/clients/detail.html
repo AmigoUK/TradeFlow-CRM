@@ -145,7 +145,6 @@
                     {% endif %}
                 </div>
             </div>
-        </div>
 
             <!-- Attachments Card -->
             <div class="card mb-3">
@@ -257,6 +256,7 @@
                     </ul>
                 </div>
             </div>
+        </div>
     </div>
 
     <!-- Right Column — Activity Timeline -->
@@ -337,4 +337,19 @@
         {% endif %}
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+/* Move modals out of sticky sidebar to prevent stacking-context trap.
+   .client-profile-sidebar has position: sticky + overflow-y: auto, which
+   creates a new stacking context — Bootstrap modals inside it render
+   behind sibling columns. Moving them to <body> fixes layering while
+   keeping data-bs-target ID lookups working. */
+document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('.client-profile-sidebar .modal').forEach(function (modal) {
+        document.body.appendChild(modal);
+    });
+});
+</script>
 {% endblock %}

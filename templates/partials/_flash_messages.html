@@ -1,6 +1,6 @@
 {% with messages = get_flashed_messages(with_categories=true) %}
     {% if messages %}
-        <div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1080;">
+        <div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1090;">
             {% for category, message in messages %}
                 <div class="toast align-items-center text-bg-{{ category }} border-0" role="alert" data-bs-autohide="true" data-bs-delay="4000">
                     <div class="d-flex">
