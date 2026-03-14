@@ -438,6 +438,28 @@
         <h5 class="mb-0"><i class="bi bi-google me-1"></i>Google Integration</h5>
     </div>
     <div class="card-body">
+        <div class="alert alert-light border mb-4">
+            <h6 class="alert-heading"><i class="bi bi-info-circle me-1"></i>Setup Instructions</h6>
+            <ol class="mb-2 small">
+                <li>Go to the <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener">Google Cloud Console — Credentials <i class="bi bi-box-arrow-up-right" style="font-size: 0.7rem;"></i></a></li>
+                <li>Create a new project (or select an existing one)</li>
+                <li>Click <strong>Create Credentials</strong> &rarr; <strong>OAuth client ID</strong></li>
+                <li>Set Application type to <strong>Web application</strong></li>
+                <li>Under <strong>Authorised redirect URIs</strong>, add:<br>
+                    <code>{{ url_for('google.callback', _external=True) }}</code>
+                </li>
+                <li>Copy the <strong>Client ID</strong> and <strong>Client Secret</strong> into the fields below</li>
+                <li>Enable the APIs you need in <a href="https://console.cloud.google.com/apis/library" target="_blank" rel="noopener">API Library <i class="bi bi-box-arrow-up-right" style="font-size: 0.7rem;"></i></a>:
+                    <ul>
+                        <li><strong>Google Calendar API</strong> — for calendar sync and Meet links</li>
+                        <li><strong>Google Docs API</strong> — for document creation</li>
+                        <li><strong>Google Drive API</strong> — for file storage</li>
+                    </ul>
+                </li>
+                <li>If your app is in <em>Testing</em> mode, add user emails under the <a href="https://console.cloud.google.com/apis/credentials/consent" target="_blank" rel="noopener">OAuth consent screen <i class="bi bi-box-arrow-up-right" style="font-size: 0.7rem;"></i></a></li>
+            </ol>
+            <small class="text-muted">For production use, submit your app for Google verification to remove the "unverified app" warning.</small>
+        </div>
         <form action="{{ url_for('google.save_config') }}" method="POST">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="row">

@@ -107,8 +107,8 @@ def upload():
                         return jsonify({"ok": True, "message": f"File '{original_name}' uploaded to Google Drive."})
                     flash(f"File '{original_name}' uploaded to Google Drive.", "success")
                     return redirect(request.referrer or url_for("clients.detail_client", id=client_id))
-        except Exception:
-            pass
+        except Exception as e:
+            current_app.logger.warning("Google Drive upload failed: %s", e)
         flash("Failed to upload to Google Drive. Saving locally instead.", "warning")
 
     stored_name, file_size, mime_type, original_name = _save_file(file, client_id)

@@ -198,9 +198,19 @@
 .client-profile-sidebar {
     position: sticky;
     top: 1rem;
+    max-height: calc(100vh - 2rem);
+    overflow-y: auto;
 }
 body.sticky-nav .client-profile-sidebar {
     top: 4.5rem;
+    max-height: calc(100vh - 5.5rem);
+}
+@media (max-width: 991.98px) {
+    .client-profile-sidebar {
+        position: static;
+        max-height: none;
+        overflow-y: visible;
+    }
 }
 
 /* Mobile responsive tables — stacked card layout */
@@ -348,7 +358,10 @@ body.sticky-nav .client-profile-sidebar {
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
 }
 
-/* Offcanvas panel — full-width on small screens */
+/* Offcanvas panel */
+#quickAddPanel {
+    width: 480px;
+}
 @media (max-width: 575.98px) {
     #quickAddPanel {
         width: 100% !important;
@@ -362,6 +375,63 @@ body.sticky-nav .client-profile-sidebar {
 
 .list-group-flush .list-group-item:hover {
     background-color: rgba(13, 110, 253, 0.04);
+}
+
+/* Calendar — layout (moved from calendar.html inline <style>) */
+#calendar {
+    max-width: 1100px;
+    margin: 0 auto;
+}
+.fc .fc-toolbar-title { font-size: 1.4rem; }
+.fc .fc-button { font-size: 0.85rem; }
+.fc-event { cursor: pointer; font-size: 0.8rem; }
+
+/* Calendar legend */
+.calendar-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    padding: 1rem 0;
+}
+.calendar-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.85rem;
+    color: #6c757d;
+}
+.calendar-legend-swatch {
+    width: 14px;
+    height: 14px;
+    border-radius: 3px;
+    display: inline-block;
+}
+
+/* Calendar legend swatch colours */
+.calendar-legend-swatch-high      { background-color: #dc3545; }
+.calendar-legend-swatch-medium    { background-color: #ffc107; }
+.calendar-legend-swatch-low       { background-color: #198754; }
+.calendar-legend-swatch-completed { background-color: #6c757d; }
+.calendar-legend-swatch-phone     { background-color: #0d6efd; }
+.calendar-legend-swatch-email     { background-color: #6f42c1; }
+.calendar-legend-swatch-meeting   { background-color: #fd7e14; }
+.calendar-legend-swatch-google    { background-color: #4285F4; }
+
+/* Quarterly — dimension classes (moved from inline JS styles) */
+.quarter-month-label { width: 80px; }
+.quarter-progress { height: 18px; }
+.quarter-progress .progress-bar { font-size: 0.7rem; }
+.quarter-type-bar { height: 22px; }
+.quarter-type-bar .progress-bar { font-size: 0.7rem; }
+
+/* Quarter card header colours */
+.quarter-card-header {
+    background-color: #f8f9fa;
+    color: #333;
+}
+.quarter-card-header-current {
+    background-color: var(--quarter-colour, #0d6efd);
+    color: #fff;
 }
 
 /* ===== Dark Mode Overrides ===== */
@@ -409,4 +479,40 @@ body.sticky-nav .client-profile-sidebar {
     [data-bs-theme="dark"] .table-responsive table tbody td {
         border-bottom-color: #495057;
     }
+}
+
+/* Dark mode — sidebar scrollbar */
+[data-bs-theme="dark"] .client-profile-sidebar {
+    scrollbar-color: #495057 #2b3035;
+}
+
+/* Dark mode — calendar legend */
+[data-bs-theme="dark"] .calendar-legend-item {
+    color: #adb5bd;
+}
+
+/* Dark mode — quarter card header */
+[data-bs-theme="dark"] .quarter-card-header {
+    background-color: #2b3035;
+    color: #dee2e6;
+}
+
+/* Dark mode — quarter client row hover */
+[data-bs-theme="dark"] .quarter-client-row:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+/* Dark mode — quarter stat box border */
+[data-bs-theme="dark"] .quarter-stat-box {
+    border-color: #495057;
+}
+
+/* Dark mode — attachment list & upload form */
+[data-bs-theme="dark"] .list-group-flush .list-group-item:hover {
+    background-color: rgba(255, 255, 255, 0.04);
+}
+
+/* Dark mode — Google Docs card list items */
+[data-bs-theme="dark"] .list-group-flush .list-group-item {
+    border-bottom-color: #495057;
 }

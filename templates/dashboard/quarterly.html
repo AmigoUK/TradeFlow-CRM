@@ -141,9 +141,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
         /* Header */
         var header = document.createElement("div");
-        header.className = "card-header d-flex justify-content-between align-items-center";
-        header.style.backgroundColor = isCurrent ? colour : "#f8f9fa";
-        header.style.color = isCurrent ? "#fff" : "#333";
+        header.className = "card-header d-flex justify-content-between align-items-center quarter-card-header" + (isCurrent ? " quarter-card-header-current" : "");
+        if (isCurrent) { header.style.setProperty("--quarter-colour", colour); }
 
         var title = document.createElement("strong");
         title.textContent = info.label;
@@ -199,21 +198,18 @@ document.addEventListener("DOMContentLoaded", function () {
             barRow.className = "d-flex align-items-center mb-1";
 
             var monthName = document.createElement("small");
-            monthName.className = "text-muted me-2";
-            monthName.style.width = "80px";
+            monthName.className = "text-muted me-2 quarter-month-label";
             monthName.textContent = md.name;
             barRow.appendChild(monthName);
 
             var progress = document.createElement("div");
-            progress.className = "progress flex-grow-1 quarter-density-bar";
-            progress.style.height = "18px";
+            progress.className = "progress flex-grow-1 quarter-density-bar quarter-progress";
             var pctWidth = Math.round((md.total / data.max_monthly_activity) * 100);
             var bar = document.createElement("div");
             bar.className = "progress-bar";
             bar.style.width = pctWidth + "%";
             bar.style.backgroundColor = colour;
             bar.textContent = md.total > 0 ? md.total : "";
-            bar.style.fontSize = "0.7rem";
             progress.appendChild(bar);
             barRow.appendChild(progress);
 
@@ -233,8 +229,7 @@ document.addEventListener("DOMContentLoaded", function () {
         }
         if (typeTotal > 0) {
             var typeBar = document.createElement("div");
-            typeBar.className = "progress mb-2";
-            typeBar.style.height = "22px";
+            typeBar.className = "progress mb-2 quarter-type-bar";
 
             var typeColours = data.type_colours || {};
             for (var t = 0; t < typeKeys.length; t++) {
@@ -247,7 +242,6 @@ document.addEventListener("DOMContentLoaded", function () {
                     seg.style.width = Math.round((count / typeTotal) * 100) + "%";
                     seg.title = tKey.charAt(0).toUpperCase() + tKey.slice(1) + ": " + count;
                     seg.textContent = count;
-                    seg.style.fontSize = "0.7rem";
                     typeBar.appendChild(seg);
                 }
             }

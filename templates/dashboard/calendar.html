@@ -2,44 +2,6 @@
 
 {% block title %}Calendar — NextStep CRM{% endblock %}
 
-{% block extra_head %}
-<style>
-    #calendar {
-        max-width: 1100px;
-        margin: 0 auto;
-    }
-    .fc .fc-toolbar-title {
-        font-size: 1.4rem;
-    }
-    .fc .fc-button {
-        font-size: 0.85rem;
-    }
-    .fc-event {
-        cursor: pointer;
-        font-size: 0.8rem;
-    }
-    .calendar-legend {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 1rem;
-        padding: 1rem 0;
-    }
-    .calendar-legend-item {
-        display: flex;
-        align-items: center;
-        gap: 0.4rem;
-        font-size: 0.85rem;
-        color: #6c757d;
-    }
-    .calendar-legend-swatch {
-        width: 14px;
-        height: 14px;
-        border-radius: 3px;
-        display: inline-block;
-    }
-</style>
-{% endblock %}
-
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h1><i class="bi bi-calendar3 me-2"></i>Calendar</h1>
@@ -57,29 +19,29 @@
         <h6 class="text-muted mb-2">Colour Legend</h6>
         <div class="calendar-legend">
             <div class="calendar-legend-item">
-                <span class="calendar-legend-swatch" style="background:#dc3545;"></span> High Priority
+                <span class="calendar-legend-swatch calendar-legend-swatch-high"></span> High Priority
             </div>
             <div class="calendar-legend-item">
-                <span class="calendar-legend-swatch" style="background:#ffc107;"></span> Medium Priority
+                <span class="calendar-legend-swatch calendar-legend-swatch-medium"></span> Medium Priority
             </div>
             <div class="calendar-legend-item">
-                <span class="calendar-legend-swatch" style="background:#198754;"></span> Low Priority
+                <span class="calendar-legend-swatch calendar-legend-swatch-low"></span> Low Priority
             </div>
             <div class="calendar-legend-item">
-                <span class="calendar-legend-swatch" style="background:#6c757d;"></span> Completed
+                <span class="calendar-legend-swatch calendar-legend-swatch-completed"></span> Completed
             </div>
             <div class="calendar-legend-item">
-                <span class="calendar-legend-swatch" style="background:#0d6efd;"></span> Phone
+                <span class="calendar-legend-swatch calendar-legend-swatch-phone"></span> Phone
             </div>
             <div class="calendar-legend-item">
-                <span class="calendar-legend-swatch" style="background:#6f42c1;"></span> Email
+                <span class="calendar-legend-swatch calendar-legend-swatch-email"></span> Email
             </div>
             <div class="calendar-legend-item">
-                <span class="calendar-legend-swatch" style="background:#fd7e14;"></span> Meeting
+                <span class="calendar-legend-swatch calendar-legend-swatch-meeting"></span> Meeting
             </div>
             {% if google_connected %}
             <div class="calendar-legend-item">
-                <span class="calendar-legend-swatch" style="background:#4285F4;"></span> Google Calendar
+                <span class="calendar-legend-swatch calendar-legend-swatch-google"></span> Google Calendar
             </div>
             {% endif %}
         </div>
