@@ -459,6 +459,14 @@
                 <li>If your app is in <em>Testing</em> mode, add user emails under the <a href="https://console.cloud.google.com/apis/credentials/consent" target="_blank" rel="noopener">OAuth consent screen <i class="bi bi-box-arrow-up-right" style="font-size: 0.7rem;"></i></a></li>
             </ol>
             <small class="text-muted">For production use, submit your app for Google verification to remove the "unverified app" warning.</small>
+            <details class="mt-3">
+                <summary class="fw-semibold small"><i class="bi bi-question-circle me-1"></i>Common Issues</summary>
+                <ul class="small mt-2 mb-0">
+                    <li><strong>Redirect URI mismatch</strong> — Ensure the Authorised redirect URI in Google Cloud Console matches exactly: <code>{{ url_for('google.callback', _external=True) }}</code></li>
+                    <li><strong>Access denied</strong> — If your app is in Testing mode, check that each user's email is added under the OAuth consent screen's test users</li>
+                    <li><strong>Scopes not working</strong> — After changing scopes, users may need to disconnect and reconnect their Google account for the new scopes to take effect</li>
+                </ul>
+            </details>
         </div>
         <form action="{{ url_for('google.save_config') }}" method="POST">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -485,6 +493,7 @@
                         <label class="form-check-label" for="scope_calendar">
                             <i class="bi bi-calendar3 me-1"></i>Calendar
                         </label>
+                        <small class="text-muted d-block ms-4">Lets users sync follow-ups and interactions to Google Calendar and create Meet links</small>
                     </div>
                     <div class="form-check">
                         <input class="form-check-input" type="checkbox" id="scope_docs" name="scope_docs"
@@ -492,6 +501,7 @@
                         <label class="form-check-label" for="scope_docs">
                             <i class="bi bi-file-earmark-text me-1"></i>Docs
                         </label>
+                        <small class="text-muted d-block ms-4">Lets users create and link Google Docs to clients</small>
                     </div>
                     <div class="form-check">
                         <input class="form-check-input" type="checkbox" id="scope_drive" name="scope_drive"
@@ -499,6 +509,7 @@
                         <label class="form-check-label" for="scope_drive">
                             <i class="bi bi-cloud me-1"></i>Drive
                         </label>
+                        <small class="text-muted d-block ms-4">Lets users upload files to Google Drive and link Drive files to clients</small>
                     </div>
                 </div>
                 <small class="text-muted">Email scope is always included</small>

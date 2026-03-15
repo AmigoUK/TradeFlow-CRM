@@ -2,7 +2,8 @@
     <i class="bi bi-upload me-1"></i>Upload File
 </button>
 {% if google_connected %}
-<button type="button" class="btn btn-sm btn-outline-info w-100 mt-1" data-bs-toggle="modal" data-bs-target="#driveBrowserModal">
+<button type="button" class="btn btn-sm btn-outline-info w-100 mt-1" data-bs-toggle="modal" data-bs-target="#driveBrowserModal"
+        title="Links a file from your Drive — does not copy it">
     <i class="bi bi-cloud me-1"></i>Link from Google Drive
 </button>
 {% endif %}
@@ -44,6 +45,7 @@
                                 </label>
                             </div>
                         </div>
+                        <small class="text-muted">Local files are stored on the server. Drive files are stored in your Google Drive account.</small>
                     </div>
                     {% endif %}
                     <div class="mb-3">

@@ -58,12 +58,14 @@
                 <label class="form-check-label" for="sync_to_google">
                     <i class="bi bi-calendar3 me-1 text-primary"></i>Sync to Google Calendar
                 </label>
+                <small class="text-muted d-block ms-4">Creates an event in your Google Calendar with this date and time</small>
             </div>
             <div class="form-check">
                 <input class="form-check-input" type="checkbox" id="create_meet" name="create_meet">
                 <label class="form-check-label" for="create_meet">
                     <i class="bi bi-camera-video me-1 text-success"></i>Create Google Meet link
                 </label>
+                <small class="text-muted d-block ms-4">Generates a video meeting link you can share with the client</small>
             </div>
             {% if contact and contact.meet_link %}
             <div class="mt-2">
@@ -73,6 +75,12 @@
             </div>
             {% endif %}
         </div>
+    </div>
+    {% elif google_enabled %}
+    <div class="alert alert-info py-2 px-3 small mb-3">
+        <i class="bi bi-google me-1"></i>
+        <a href="{{ url_for('google.connect') }}">Connect your Google account</a>
+        to sync events and create meeting links.
     </div>
     {% endif %}
 

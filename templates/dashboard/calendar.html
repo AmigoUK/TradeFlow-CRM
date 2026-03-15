@@ -45,6 +45,13 @@
             </div>
             {% endif %}
         </div>
+        {% if google_connected %}
+        <small class="text-muted d-block mt-2">Events from your Google Calendar appear alongside CRM events. Use "Sync to Google Calendar" on follow-ups and interactions to push CRM events to Google.</small>
+        {% elif google_enabled %}
+        <small class="text-muted d-block mt-2"><i class="bi bi-google me-1"></i>
+            <a href="{{ url_for('google.connect') }}">Connect your Google account</a> to see your Google Calendar events here.
+        </small>
+        {% endif %}
     </div>
 </div>
 {% endblock %}
