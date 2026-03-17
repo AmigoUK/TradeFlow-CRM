@@ -94,8 +94,8 @@ document.addEventListener("DOMContentLoaded", function () {
         ],
         eventClick: function (info) {
             var props = info.event.extendedProps;
-            if (props.clientId) {
-                window.location.href = "/clients/" + props.clientId;
+            if (props.companyId) {
+                window.location.href = "/companies/" + props.companyId;
             }
         },
         dateClick: function (info) {

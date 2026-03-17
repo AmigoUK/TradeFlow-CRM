@@ -33,15 +33,21 @@
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link {% if request.endpoint and request.endpoint.startswith('clients.') %}active{% endif %}"
-                       href="{{ url_for('clients.list_clients') }}">
-                        <i class="bi bi-building me-1"></i>Clients
+                    <a class="nav-link {% if request.endpoint and request.endpoint.startswith('companies.') %}active{% endif %}"
+                       href="{{ url_for('companies.list_companies') }}">
+                        <i class="bi bi-building me-1"></i>Companies
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link {% if request.endpoint and request.endpoint.startswith('contacts.') %}active{% endif %}"
                        href="{{ url_for('contacts.list_contacts') }}">
-                        <i class="bi bi-chat-dots me-1"></i>Contacts
+                        <i class="bi bi-people me-1"></i>Contacts
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {% if request.endpoint and request.endpoint.startswith('interactions.') %}active{% endif %}"
+                       href="{{ url_for('interactions.list_interactions') }}">
+                        <i class="bi bi-chat-dots me-1"></i>Interactions
                     </a>
                 </li>
                 <li class="nav-item dropdown">
@@ -69,15 +75,15 @@
                     </a>
                     <ul class="dropdown-menu dropdown-menu-end">
                         <li>
-                            <a class="dropdown-item" href="{{ url_for('clients.create_client') }}"
-                               data-panel-url="{{ url_for('clients.create_client') }}"
-                               data-panel-title="New Client">
-                                <i class="bi bi-building me-2"></i>New Client
+                            <a class="dropdown-item" href="{{ url_for('companies.create_company') }}"
+                               data-panel-url="{{ url_for('companies.create_company') }}"
+                               data-panel-title="New Company">
+                                <i class="bi bi-building me-2"></i>New Company
                             </a>
                         </li>
                         <li>
-                            <a class="dropdown-item" href="{{ url_for('contacts.create_contact') }}"
-                               data-panel-url="{{ url_for('contacts.create_contact') }}"
+                            <a class="dropdown-item" href="{{ url_for('interactions.create_interaction') }}"
+                               data-panel-url="{{ url_for('interactions.create_interaction') }}"
                                data-panel-title="Log Interaction">
                                 <i class="bi bi-chat-dots me-2"></i>Log Interaction
                             </a>

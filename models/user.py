@@ -23,9 +23,10 @@ class User(UserMixin, db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     # Ownership relationships
-    clients = db.relationship("Client", backref="owner", lazy=True)
-    contacts = db.relationship("Contact", backref="owner", lazy=True)
+    companies = db.relationship("Company", backref="owner", lazy=True)
+    interactions = db.relationship("Interaction", backref="owner", lazy=True)
     followups = db.relationship("FollowUp", backref="owner", lazy=True)
+    owned_contacts = db.relationship("Contact", backref="owner", lazy=True)
 
     @property
     def is_active(self):

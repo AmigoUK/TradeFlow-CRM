@@ -3,34 +3,34 @@
 from models.google_doc import GoogleDoc
 from models.doc_template import DocTemplate
 from extensions import db
-from tests.conftest import login_as, make_client
+from tests.conftest import login_as, make_company
 
 
 class TestGoogleDocModel:
     """GoogleDoc model basics."""
 
     def test_create_google_doc(self, app, admin_user):
-        c = make_client(admin_user)
+        c = make_company(admin_user)
         doc = GoogleDoc(
             google_doc_id="doc-123-abc",
             title="Meeting Notes",
             google_url="https://docs.google.com/document/d/doc-123-abc/edit",
             doc_type="document",
-            client_id=c.id,
+            company_id=c.id,
             created_by_user_id=admin_user.id,
         )
         db.session.add(doc)
         db.session.commit()
         assert doc.id is not None
-        assert doc.client.id == c.id
+        assert doc.company.id == c.id
 
-    def test_client_google_docs_backref(self, app, admin_user):
-        c = make_client(admin_user)
+    def test_company_google_docs_backref(self, app, admin_user):
+        c = make_company(admin_user)
         doc = GoogleDoc(
             google_doc_id="doc-456",
             title="Proposal",
             google_url="https://docs.google.com/document/d/doc-456/edit",
-            client_id=c.id,
+            company_id=c.id,
             created_by_user_id=admin_user.id,
         )
         db.session.add(doc)
@@ -64,31 +64,31 @@ class TestDocsRoutes:
 
     def test_create_doc_when_not_connected(self, client, admin_user):
         login_as(client, admin_user)
-        c = make_client(admin_user)
+        c = make_company(admin_user)
         resp = client.post("/google/docs/create", data={
             "doc_title": "Test Doc",
-            "client_id": c.id,
+            "company_id": c.id,
         }, follow_redirects=True)
         assert resp.status_code == 200
 
     def test_link_doc_when_not_connected(self, client, admin_user):
         login_as(client, admin_user)
-        c = make_client(admin_user)
+        c = make_company(admin_user)
         resp = client.post("/google/docs/link", data={
             "google_doc_id": "abc123",
             "doc_title": "Linked Doc",
-            "client_id": c.id,
+            "company_id": c.id,
         }, follow_redirects=True)
         assert resp.status_code == 200
 
     def test_unlink_doc(self, client, admin_user):
         login_as(client, admin_user)
-        c = make_client(admin_user)
+        c = make_company(admin_user)
         doc = GoogleDoc(
             google_doc_id="unlink-test",
             title="To Unlink",
             google_url="https://docs.google.com/document/d/unlink-test/edit",
-            client_id=c.id,
+            company_id=c.id,
             created_by_user_id=admin_user.id,
         )
         db.session.add(doc)
@@ -144,12 +144,12 @@ class TestDocTemplateAdmin:
 
 
 class TestDocsUI:
-    """Docs UI elements in client detail and settings."""
+    """Docs UI elements in company detail and settings."""
 
-    def test_client_detail_no_docs_card_when_disconnected(self, client, admin_user):
+    def test_company_detail_no_docs_card_when_disconnected(self, client, admin_user):
         login_as(client, admin_user)
-        c = make_client(admin_user)
-        resp = client.get(f"/clients/{c.id}")
+        c = make_company(admin_user)
+        resp = client.get(f"/companies/{c.id}")
         assert resp.status_code == 200
         assert b"Google Docs" not in resp.data
 

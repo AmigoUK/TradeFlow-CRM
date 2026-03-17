@@ -5,7 +5,7 @@ from blueprints.auth.decorators import role_required
 from blueprints.users import users_bp
 from extensions import db
 from models.user import ROLES, User
-from models import Client, Contact, FollowUp
+from models import Company, Interaction, FollowUp
 
 
 def _is_ajax():
@@ -131,8 +131,8 @@ def delegate_records(id):
         return redirect(url_for("users.list_users"))
 
     # Transfer all records
-    Client.query.filter_by(user_id=source_user.id).update({"user_id": target_user.id})
-    Contact.query.filter_by(user_id=source_user.id).update({"user_id": target_user.id})
+    Company.query.filter_by(user_id=source_user.id).update({"user_id": target_user.id})
+    Interaction.query.filter_by(user_id=source_user.id).update({"user_id": target_user.id})
     FollowUp.query.filter_by(user_id=source_user.id).update({"user_id": target_user.id})
     db.session.commit()
 

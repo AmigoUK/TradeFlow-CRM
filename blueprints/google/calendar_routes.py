@@ -10,12 +10,12 @@ from blueprints.google import google_bp
 from blueprints.google.calendar_service import (
     delete_calendar_event,
     fetch_google_events,
-    sync_contact_to_calendar,
+    sync_interaction_to_calendar,
     sync_followup_to_calendar,
 )
 from blueprints.google.google_service import google_required
 from extensions import db
-from models import Client, Contact, FollowUp
+from models import Company, Interaction, FollowUp
 from models.google_calendar_sync import GoogleCalendarSync
 
 
@@ -34,25 +34,25 @@ def sync_followup(id):
     else:
         flash("Failed to sync to Google Calendar.", "danger")
 
-    return redirect(request.referrer or url_for("clients.detail_client", id=followup.client_id))
+    return redirect(request.referrer or url_for("companies.detail_company", id=followup.company_id))
 
 
-@google_bp.route("/calendar/sync-contact/<int:id>", methods=["POST"])
+@google_bp.route("/calendar/sync-interaction/<int:id>", methods=["POST"])
 @login_required
 @google_required
-def sync_contact(id):
-    """Push a contact to Google Calendar."""
-    contact = db.get_or_404(Contact, id)
-    if not can_access_record(contact):
+def sync_interaction(id):
+    """Push an interaction to Google Calendar."""
+    interaction = db.get_or_404(Interaction, id)
+    if not can_access_record(interaction):
         return jsonify({"ok": False, "error": "Access denied."}), 403
 
-    sync = sync_contact_to_calendar(contact, current_user.id)
+    sync = sync_interaction_to_calendar(interaction, current_user.id)
     if sync:
         flash("Interaction synced to Google Calendar.", "success")
     else:
         flash("Failed to sync to Google Calendar.", "danger")
 
-    return redirect(request.referrer or url_for("clients.detail_client", id=contact.client_id))
+    return redirect(request.referrer or url_for("companies.detail_company", id=interaction.company_id))
 
 
 @google_bp.route("/calendar/unsync/<int:id>", methods=["POST"])

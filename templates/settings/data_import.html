@@ -22,18 +22,26 @@
                 <div>
                     <div class="form-check form-check-inline">
                         <input class="form-check-input" type="radio" name="entity_type"
-                               id="entityClients" value="clients"
-                               {{ 'checked' if entity_type == 'clients' or not entity_type }}>
-                        <label class="form-check-label" for="entityClients">
-                            <i class="bi bi-building me-1"></i>Clients
+                               id="entityCompanies" value="companies"
+                               {{ 'checked' if entity_type == 'companies' or not entity_type }}>
+                        <label class="form-check-label" for="entityCompanies">
+                            <i class="bi bi-building me-1"></i>Companies
                         </label>
                     </div>
                     <div class="form-check form-check-inline">
                         <input class="form-check-input" type="radio" name="entity_type"
-                               id="entityContacts" value="contacts"
-                               {{ 'checked' if entity_type == 'contacts' }}>
-                        <label class="form-check-label" for="entityContacts">
-                            <i class="bi bi-chat-dots me-1"></i>Contacts
+                               id="entityContactPersons" value="contact_persons"
+                               {{ 'checked' if entity_type == 'contact_persons' }}>
+                        <label class="form-check-label" for="entityContactPersons">
+                            <i class="bi bi-people me-1"></i>Contacts (People)
+                        </label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="entity_type"
+                               id="entityInteractions" value="interactions"
+                               {{ 'checked' if entity_type == 'interactions' }}>
+                        <label class="form-check-label" for="entityInteractions">
+                            <i class="bi bi-chat-dots me-1"></i>Interactions
                         </label>
                     </div>
                     <div class="form-check form-check-inline">
@@ -52,8 +60,8 @@
                 <input type="file" class="form-control" id="csvFile" name="csv_file" accept=".csv">
                 <small class="text-muted">
                     Upload a CSV file. Download a
-                    <a href="{{ url_for('data_io.download_template', entity='clients') }}">clients</a>,
-                    <a href="{{ url_for('data_io.download_template', entity='contacts') }}">contacts</a>, or
+                    <a href="{{ url_for('data_io.download_template', entity='companies') }}">companies</a>,
+                    <a href="{{ url_for('data_io.download_template', entity='interactions') }}">interactions</a>, or
                     <a href="{{ url_for('data_io.download_template', entity='followups') }}">follow-ups</a>
                     template to get started.
                 </small>

@@ -37,18 +37,18 @@ def _csv_response(string_io, filename):
 # ── Export routes ──────────────────────────────────────────────
 
 
-@data_io_bp.route("/export/clients")
+@data_io_bp.route("/export/companies")
 @role_required("admin")
-def export_clients():
-    output = generate_export_csv("clients")
-    return _csv_response(output, f"clients_{date.today().isoformat()}.csv")
+def export_companies():
+    output = generate_export_csv("companies")
+    return _csv_response(output, f"companies_{date.today().isoformat()}.csv")
 
 
-@data_io_bp.route("/export/contacts")
+@data_io_bp.route("/export/interactions")
 @role_required("admin")
-def export_contacts():
-    output = generate_export_csv("contacts")
-    return _csv_response(output, f"contacts_{date.today().isoformat()}.csv")
+def export_interactions():
+    output = generate_export_csv("interactions")
+    return _csv_response(output, f"interactions_{date.today().isoformat()}.csv")
 
 
 @data_io_bp.route("/export/followups")

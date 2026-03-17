@@ -4,7 +4,7 @@ import io
 
 from extensions import db
 from models.attachment import Attachment
-from tests.conftest import login_as, make_client
+from tests.conftest import login_as, make_company
 
 
 # ── Upload ──────────────────────────────────────────────────────
@@ -13,10 +13,10 @@ from tests.conftest import login_as, make_client
 class TestAttachmentUpload:
     def test_upload_success(self, client, regular_user):
         login_as(client, regular_user)
-        c = make_client(regular_user, company_name="Upload Corp")
+        c = make_company(regular_user, company_name="Upload Corp")
         data = {
             "file": (io.BytesIO(b"test file content"), "test.txt"),
-            "client_id": str(c.id),
+            "company_id": str(c.id),
             "description": "Test upload",
         }
         resp = client.post(
@@ -26,26 +26,26 @@ class TestAttachmentUpload:
             follow_redirects=True,
         )
         assert resp.status_code == 200
-        att = Attachment.query.filter_by(client_id=c.id).first()
+        att = Attachment.query.filter_by(company_id=c.id).first()
         assert att is not None
         assert att.filename == "test.txt"
 
     def test_no_file_rejected(self, client, regular_user):
         login_as(client, regular_user)
-        c = make_client(regular_user, company_name="NoFile Corp")
+        c = make_company(regular_user, company_name="NoFile Corp")
         resp = client.post(
             "/attachments/upload",
-            data={"client_id": str(c.id)},
+            data={"company_id": str(c.id)},
             follow_redirects=True,
         )
         assert resp.status_code == 200
 
-    def test_verifies_client_access(self, client, regular_user, other_user):
+    def test_verifies_company_access(self, client, regular_user, other_user):
         login_as(client, regular_user)
-        c = make_client(other_user, company_name="Forbidden Corp")
+        c = make_company(other_user, company_name="Forbidden Corp")
         data = {
             "file": (io.BytesIO(b"hack"), "evil.txt"),
-            "client_id": str(c.id),
+            "company_id": str(c.id),
         }
         resp = client.post(
             "/attachments/upload",
@@ -61,17 +61,17 @@ class TestAttachmentUpload:
 class TestAttachmentDownload:
     def test_download_returns_file(self, client, regular_user):
         login_as(client, regular_user)
-        c = make_client(regular_user, company_name="Download Corp")
+        c = make_company(regular_user, company_name="Download Corp")
         data = {
             "file": (io.BytesIO(b"download me"), "download.txt"),
-            "client_id": str(c.id),
+            "company_id": str(c.id),
         }
         client.post(
             "/attachments/upload",
             data=data,
             content_type="multipart/form-data",
         )
-        att = Attachment.query.filter_by(client_id=c.id).first()
+        att = Attachment.query.filter_by(company_id=c.id).first()
         resp = client.get(f"/attachments/{att.id}/download")
         assert resp.status_code == 200
         assert b"download me" in resp.data
@@ -83,17 +83,17 @@ class TestAttachmentDownload:
 class TestAttachmentEdit:
     def test_edit_updates_description(self, client, regular_user):
         login_as(client, regular_user)
-        c = make_client(regular_user, company_name="Edit Att Corp")
+        c = make_company(regular_user, company_name="Edit Att Corp")
         data = {
             "file": (io.BytesIO(b"editable"), "editable.txt"),
-            "client_id": str(c.id),
+            "company_id": str(c.id),
         }
         client.post(
             "/attachments/upload",
             data=data,
             content_type="multipart/form-data",
         )
-        att = Attachment.query.filter_by(client_id=c.id).first()
+        att = Attachment.query.filter_by(company_id=c.id).first()
         resp = client.post(
             f"/attachments/{att.id}/edit",
             data={"description": "New description"},
@@ -110,17 +110,17 @@ class TestAttachmentEdit:
 class TestAttachmentDelete:
     def test_delete_removes_from_db(self, client, regular_user):
         login_as(client, regular_user)
-        c = make_client(regular_user, company_name="Del Att Corp")
+        c = make_company(regular_user, company_name="Del Att Corp")
         data = {
             "file": (io.BytesIO(b"delete me"), "deleteme.txt"),
-            "client_id": str(c.id),
+            "company_id": str(c.id),
         }
         client.post(
             "/attachments/upload",
             data=data,
             content_type="multipart/form-data",
         )
-        att = Attachment.query.filter_by(client_id=c.id).first()
+        att = Attachment.query.filter_by(company_id=c.id).first()
         attid = att.id
         resp = client.post(f"/attachments/{attid}/delete", follow_redirects=True)
         assert resp.status_code == 200
@@ -134,17 +134,17 @@ class TestAttachmentAccessControl:
     def test_user_cannot_download_other_attachment(self, client, regular_user, other_user):
         # Upload as other_user
         login_as(client, other_user)
-        c = make_client(other_user, company_name="Secret Corp")
+        c = make_company(other_user, company_name="Secret Corp")
         data = {
             "file": (io.BytesIO(b"secret"), "secret.txt"),
-            "client_id": str(c.id),
+            "company_id": str(c.id),
         }
         client.post(
             "/attachments/upload",
             data=data,
             content_type="multipart/form-data",
         )
-        att = Attachment.query.filter_by(client_id=c.id).first()
+        att = Attachment.query.filter_by(company_id=c.id).first()
 
         # Logout other_user, then login as regular_user and try to download
         client.post("/logout")
@@ -155,17 +155,17 @@ class TestAttachmentAccessControl:
     def test_manager_can_download_any_attachment(self, client, regular_user, manager_user):
         # Upload as regular_user
         login_as(client, regular_user)
-        c = make_client(regular_user, company_name="Mgr Access Corp")
+        c = make_company(regular_user, company_name="Mgr Access Corp")
         data = {
             "file": (io.BytesIO(b"visible to manager"), "visible.txt"),
-            "client_id": str(c.id),
+            "company_id": str(c.id),
         }
         client.post(
             "/attachments/upload",
             data=data,
             content_type="multipart/form-data",
         )
-        att = Attachment.query.filter_by(client_id=c.id).first()
+        att = Attachment.query.filter_by(company_id=c.id).first()
 
         # Logout regular_user, login as manager and download
         client.post("/logout")

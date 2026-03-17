@@ -64,7 +64,7 @@
                 <th style="width: 2rem;"><input type="checkbox" class="form-check-input" id="bulkSelectAll"></th>
                 {% endif %}
                 <th>Due Date</th>
-                <th>Client</th>
+                <th>Company</th>
                 <th>Priority</th>
                 <th>Notes</th>
                 <th>Status</th>
@@ -79,9 +79,9 @@
                 <td><input type="checkbox" class="form-check-input bulk-select-cb" value="{{ fu.id }}"></td>
                 {% endif %}
                 <td data-label="Due Date">{{ fu.due_date|relative_date }}</td>
-                <td data-label="Client">
-                    <a href="{{ url_for('clients.detail_client', id=fu.client_id) }}" class="text-decoration-none">
-                        {{ fu.client.company_name }}
+                <td data-label="Company">
+                    <a href="{{ url_for('companies.detail_company', id=fu.company_id) }}" class="text-decoration-none">
+                        {{ fu.company.company_name }}
                     </a>
                 </td>
                 <td data-label="Priority"><span class="badge badge-{{ fu.priority }}">{{ fu.priority|capitalize }}</span></td>
@@ -101,8 +101,8 @@
                 <td data-label="Actions" class="text-end">
                     <form method="POST" action="{{ url_for('followups.complete_followup', id=fu.id) }}" class="d-inline complete-followup-form"
                           data-followup-id="{{ fu.id }}"
-                          data-client-id="{{ fu.client_id }}"
-                          data-client-name="{{ fu.client.company_name }}"
+                          data-company-id="{{ fu.company_id }}"
+                          data-company-name="{{ fu.company.company_name }}"
                           data-notes="{{ fu.notes or '' }}"
                           data-completed="{{ 'true' if fu.completed else 'false' }}">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">

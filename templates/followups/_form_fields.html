@@ -1,13 +1,13 @@
 <form method="POST" enctype="multipart/form-data">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <div class="mb-3">
-        <label for="client_id" class="form-label">Client <span class="text-danger">*</span></label>
-        <select class="form-select" id="client_id" name="client_id" required>
-            <option value="">Select a client...</option>
-            {% for cl in clients %}
-                <option value="{{ cl.id }}"
-                    {% if selected_client_id == cl.id %}selected{% endif %}>
-                    {{ cl.company_name }}
+        <label for="company_id" class="form-label">Company <span class="text-danger">*</span></label>
+        <select class="form-select" id="company_id" name="company_id" required>
+            <option value="">Select a company...</option>
+            {% for co in companies %}
+                <option value="{{ co.id }}"
+                    {% if selected_company_id == co.id %}selected{% endif %}>
+                    {{ co.company_name }}
                 </option>
             {% endfor %}
         </select>

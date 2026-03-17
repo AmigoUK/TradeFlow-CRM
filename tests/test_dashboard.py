@@ -2,7 +2,7 @@
 
 from datetime import date, timedelta
 
-from tests.conftest import login_as, make_client, make_contact, make_followup
+from tests.conftest import login_as, make_company, make_interaction, make_followup
 
 
 # ── Dashboard ───────────────────────────────────────────────────
@@ -22,14 +22,14 @@ class TestDashboard:
 
     def test_dashboard_shows_stats(self, client, admin_user):
         login_as(client, admin_user)
-        make_client(admin_user, company_name="Dashboard Corp", status="active")
+        make_company(admin_user, company_name="Dashboard Corp", status="active")
         resp = client.get("/dashboard")
         assert resp.status_code == 200
 
     def test_dashboard_filters_by_ownership(self, client, regular_user, other_user):
         login_as(client, regular_user)
-        make_client(regular_user, company_name="My Dash Corp", status="active")
-        make_client(other_user, company_name="Other Dash Corp", status="active")
+        make_company(regular_user, company_name="My Dash Corp", status="active")
+        make_company(other_user, company_name="Other Dash Corp", status="active")
         resp = client.get("/dashboard")
         assert resp.status_code == 200
 
@@ -57,8 +57,8 @@ class TestCalendarAPI:
 
     def test_events_ownership_filter(self, client, regular_user, other_user):
         login_as(client, regular_user)
-        c1 = make_client(regular_user, company_name="My Events Corp")
-        c2 = make_client(other_user, company_name="Other Events Corp")
+        c1 = make_company(regular_user, company_name="My Events Corp")
+        c2 = make_company(other_user, company_name="Other Events Corp")
         make_followup(c1, regular_user, due_date=date.today())
         make_followup(c2, other_user, due_date=date.today())
         resp = client.get("/api/events")
@@ -86,7 +86,7 @@ class TestQuarterlyAPI:
         resp = client.get(f"/api/quarterly-data?year={year}")
         data = resp.get_json()
         q1 = data["quarters"]["1"]
-        assert "total_contacts" in q1
+        assert "total_interactions" in q1
         assert "total_followups" in q1
         assert "type_breakdown" in q1
         assert "priority_breakdown" in q1
@@ -95,7 +95,7 @@ class TestQuarterlyAPI:
 
     def test_quarterly_ownership_filter(self, client, regular_user, other_user):
         login_as(client, regular_user)
-        c = make_client(other_user, company_name="Hidden Corp")
-        make_contact(c, other_user, date=date.today())
+        c = make_company(other_user, company_name="Hidden Corp")
+        make_interaction(c, other_user, date=date.today())
         resp = client.get("/api/quarterly-data")
         assert resp.status_code == 200

@@ -35,14 +35,14 @@ class CustomFieldValue(db.Model):
     definition_id = db.Column(
         db.Integer, db.ForeignKey("custom_field_definitions.id"), nullable=False
     )
-    client_id = db.Column(
-        db.Integer, db.ForeignKey("clients.id"), nullable=False
+    company_id = db.Column(
+        db.Integer, db.ForeignKey("companies.id"), nullable=False
     )
     value = db.Column(db.Text, default="")
 
     __table_args__ = (
-        db.UniqueConstraint("definition_id", "client_id", name="uq_field_client"),
+        db.UniqueConstraint("definition_id", "company_id", name="uq_field_company"),
     )
 
     def __repr__(self):
-        return f"<CustomFieldValue def={self.definition_id} client={self.client_id}>"
+        return f"<CustomFieldValue def={self.definition_id} company={self.company_id}>"

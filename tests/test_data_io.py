@@ -7,11 +7,11 @@ from datetime import date
 import pytest
 
 from extensions import db
-from models.client import Client
-from models.contact import Contact
+from models.company import Company
+from models.interaction import Interaction
 from models.custom_field import CustomFieldDefinition, CustomFieldValue
 from models.followup import FollowUp
-from tests.conftest import login_as, make_client, make_contact, make_followup
+from tests.conftest import login_as, make_company, make_interaction, make_followup
 
 
 # ── Helpers ────────────────────────────────────────────────────
@@ -34,26 +34,26 @@ def _parse_csv_response(response):
     return list(reader)
 
 
-# ── Export Clients ─────────────────────────────────────────────
+# ── Export Companies ──────────────────────────────────────────
 
 
-class TestExportClients:
+class TestExportCompanies:
     def test_admin_can_export(self, client, admin_user):
         login_as(client, admin_user)
-        make_client(admin_user, company_name="Export Corp")
-        resp = client.get("/settings/data/export/clients")
+        make_company(admin_user, company_name="Export Corp")
+        resp = client.get("/settings/data/export/companies")
         assert resp.status_code == 200
         assert "text/csv" in resp.content_type
         assert "attachment" in resp.headers.get("Content-Disposition", "")
 
     def test_non_admin_gets_403(self, client, regular_user):
         login_as(client, regular_user)
-        resp = client.get("/settings/data/export/clients")
+        resp = client.get("/settings/data/export/companies")
         assert resp.status_code == 403
 
     def test_correct_headers(self, client, admin_user):
         login_as(client, admin_user)
-        resp = client.get("/settings/data/export/clients")
+        resp = client.get("/settings/data/export/companies")
         rows = _parse_csv_response(resp)
         text = resp.data.decode("utf-8-sig")
         header_line = text.split("\n")[0].strip()
@@ -63,8 +63,8 @@ class TestExportClients:
 
     def test_correct_data(self, client, admin_user):
         login_as(client, admin_user)
-        make_client(admin_user, company_name="Data Corp", status="active", industry="Tech")
-        resp = client.get("/settings/data/export/clients")
+        make_company(admin_user, company_name="Data Corp", status="active", industry="Tech")
+        resp = client.get("/settings/data/export/companies")
         rows = _parse_csv_response(resp)
         names = [r["company_name"] for r in rows]
         assert "Data Corp" in names
@@ -74,42 +74,42 @@ class TestExportClients:
         cf = CustomFieldDefinition(label="Website", field_type="url", is_active=True)
         db.session.add(cf)
         db.session.flush()
-        c = make_client(admin_user, company_name="CF Corp")
-        cfv = CustomFieldValue(definition_id=cf.id, client_id=c.id, value="https://example.com")
+        c = make_company(admin_user, company_name="CF Corp")
+        cfv = CustomFieldValue(definition_id=cf.id, company_id=c.id, value="https://example.com")
         db.session.add(cfv)
         db.session.commit()
 
-        resp = client.get("/settings/data/export/clients")
+        resp = client.get("/settings/data/export/companies")
         rows = _parse_csv_response(resp)
         cf_row = [r for r in rows if r["company_name"] == "CF Corp"][0]
         assert cf_row["Website"] == "https://example.com"
 
 
-# ── Export Contacts ────────────────────────────────────────────
+# ── Export Interactions ───────────────────────────────────────
 
 
-class TestExportContacts:
+class TestExportInteractions:
     def test_correct_headers(self, client, admin_user):
         login_as(client, admin_user)
-        resp = client.get("/settings/data/export/contacts")
+        resp = client.get("/settings/data/export/interactions")
         assert resp.status_code == 200
         text = resp.data.decode("utf-8-sig")
         header_line = text.split("\n")[0].strip()
         assert "company_name" in header_line
-        assert "contact_type" in header_line
+        assert "interaction_type" in header_line
 
     def test_data_includes_company_name(self, client, admin_user):
         login_as(client, admin_user)
-        c = make_client(admin_user, company_name="Contact Corp")
-        make_contact(c, admin_user, notes="Test note")
-        resp = client.get("/settings/data/export/contacts")
+        c = make_company(admin_user, company_name="Interaction Corp")
+        make_interaction(c, admin_user, notes="Test note")
+        resp = client.get("/settings/data/export/interactions")
         rows = _parse_csv_response(resp)
         names = [r["company_name"] for r in rows]
-        assert "Contact Corp" in names
+        assert "Interaction Corp" in names
 
     def test_non_admin_gets_403(self, client, regular_user):
         login_as(client, regular_user)
-        resp = client.get("/settings/data/export/contacts")
+        resp = client.get("/settings/data/export/interactions")
         assert resp.status_code == 403
 
 
@@ -128,7 +128,7 @@ class TestExportFollowups:
 
     def test_correct_data(self, client, admin_user):
         login_as(client, admin_user)
-        c = make_client(admin_user, company_name="FU Corp")
+        c = make_company(admin_user, company_name="FU Corp")
         make_followup(c, admin_user, priority="high", notes="Urgent task")
         resp = client.get("/settings/data/export/followups")
         rows = _parse_csv_response(resp)
@@ -146,17 +146,17 @@ class TestExportFollowups:
 
 
 class TestDownloadTemplate:
-    def test_clients_template(self, client, admin_user):
+    def test_companies_template(self, client, admin_user):
         login_as(client, admin_user)
-        resp = client.get("/settings/data/template/clients")
+        resp = client.get("/settings/data/template/companies")
         assert resp.status_code == 200
         rows = _parse_csv_response(resp)
         assert len(rows) == 2  # 2 example rows
         assert rows[0]["company_name"] == "Acme Ltd"
 
-    def test_contacts_template(self, client, admin_user):
+    def test_interactions_template(self, client, admin_user):
         login_as(client, admin_user)
-        resp = client.get("/settings/data/template/contacts")
+        resp = client.get("/settings/data/template/interactions")
         assert resp.status_code == 200
         rows = _parse_csv_response(resp)
         assert len(rows) == 2
@@ -174,10 +174,10 @@ class TestDownloadTemplate:
         assert resp.status_code in (302, 404)
 
 
-# ── Import Clients ─────────────────────────────────────────────
+# ── Import Companies ─────────────────────────────────────────
 
 
-class TestImportClients:
+class TestImportCompanies:
     def test_valid_csv(self, client, admin_user):
         login_as(client, admin_user)
         csv_file = _make_csv(
@@ -186,12 +186,12 @@ class TestImportClients:
         )
         resp = client.post(
             "/settings/data/import",
-            data={"entity_type": "clients", "csv_file": (csv_file, "test.csv")},
+            data={"entity_type": "companies", "csv_file": (csv_file, "test.csv")},
             content_type="multipart/form-data",
         )
         assert resp.status_code == 200
         assert b"1" in resp.data  # "1 record imported"
-        assert Client.query.filter_by(company_name="Import Corp").first() is not None
+        assert Company.query.filter_by(company_name="Import Corp").first() is not None
 
     def test_missing_company_name_error(self, client, admin_user):
         login_as(client, admin_user)
@@ -201,7 +201,7 @@ class TestImportClients:
         )
         resp = client.post(
             "/settings/data/import",
-            data={"entity_type": "clients", "csv_file": (csv_file, "test.csv")},
+            data={"entity_type": "companies", "csv_file": (csv_file, "test.csv")},
             content_type="multipart/form-data",
         )
         assert resp.status_code == 200
@@ -215,12 +215,12 @@ class TestImportClients:
         )
         resp = client.post(
             "/settings/data/import",
-            data={"entity_type": "clients", "csv_file": (csv_file, "test.csv")},
+            data={"entity_type": "companies", "csv_file": (csv_file, "test.csv")},
             content_type="multipart/form-data",
         )
         assert resp.status_code == 200
         assert b"Invalid status" in resp.data
-        assert Client.query.filter_by(company_name="Bad Status Corp").first() is None
+        assert Company.query.filter_by(company_name="Bad Status Corp").first() is None
 
     def test_owner_column_resolution(self, client, admin_user):
         login_as(client, admin_user)
@@ -230,11 +230,11 @@ class TestImportClients:
         )
         resp = client.post(
             "/settings/data/import",
-            data={"entity_type": "clients", "csv_file": (csv_file, "test.csv")},
+            data={"entity_type": "companies", "csv_file": (csv_file, "test.csv")},
             content_type="multipart/form-data",
         )
         assert resp.status_code == 200
-        c = Client.query.filter_by(company_name="Owned Corp").first()
+        c = Company.query.filter_by(company_name="Owned Corp").first()
         assert c is not None
         assert c.user_id == admin_user.id
 
@@ -250,13 +250,13 @@ class TestImportClients:
         )
         resp = client.post(
             "/settings/data/import",
-            data={"entity_type": "clients", "csv_file": (csv_file, "test.csv")},
+            data={"entity_type": "companies", "csv_file": (csv_file, "test.csv")},
             content_type="multipart/form-data",
         )
         assert resp.status_code == 200
-        c = Client.query.filter_by(company_name="CF Import Corp").first()
+        c = Company.query.filter_by(company_name="CF Import Corp").first()
         assert c is not None
-        cfv = CustomFieldValue.query.filter_by(client_id=c.id, definition_id=cf.id).first()
+        cfv = CustomFieldValue.query.filter_by(company_id=c.id, definition_id=cf.id).first()
         assert cfv is not None
         assert cfv.value == "https://example.com"
 
@@ -272,12 +272,12 @@ class TestImportClients:
         )
         resp = client.post(
             "/settings/data/import",
-            data={"entity_type": "clients", "csv_file": (csv_file, "test.csv")},
+            data={"entity_type": "companies", "csv_file": (csv_file, "test.csv")},
             content_type="multipart/form-data",
         )
         assert resp.status_code == 200
-        assert Client.query.filter_by(company_name="Good Corp").first() is not None
-        assert Client.query.filter_by(company_name="Also Good Corp").first() is not None
+        assert Company.query.filter_by(company_name="Good Corp").first() is not None
+        assert Company.query.filter_by(company_name="Also Good Corp").first() is not None
         assert b"1" in resp.data  # 1 row skipped
 
     def test_empty_file(self, client, admin_user):
@@ -285,7 +285,7 @@ class TestImportClients:
         csv_file = _make_csv(["company_name"], [])
         resp = client.post(
             "/settings/data/import",
-            data={"entity_type": "clients", "csv_file": (csv_file, "test.csv")},
+            data={"entity_type": "companies", "csv_file": (csv_file, "test.csv")},
             content_type="multipart/form-data",
         )
         assert resp.status_code == 200
@@ -296,81 +296,81 @@ class TestImportClients:
         csv_file = _make_csv(["company_name"], [["Sneaky Corp"]])
         resp = client.post(
             "/settings/data/import",
-            data={"entity_type": "clients", "csv_file": (csv_file, "test.csv")},
+            data={"entity_type": "companies", "csv_file": (csv_file, "test.csv")},
             content_type="multipart/form-data",
         )
         assert resp.status_code == 403
 
 
-# ── Import Contacts ────────────────────────────────────────────
+# ── Import Interactions ───────────────────────────────────────
 
 
-class TestImportContacts:
+class TestImportInteractions:
     def test_valid_csv(self, client, admin_user):
         login_as(client, admin_user)
-        c = make_client(admin_user, company_name="Contact Import Corp")
+        c = make_company(admin_user, company_name="Interaction Import Corp")
         csv_file = _make_csv(
-            ["company_name", "date", "contact_type", "notes"],
-            [["Contact Import Corp", date.today().isoformat(), "email", "Sent proposal"]],
+            ["company_name", "date", "interaction_type", "notes"],
+            [["Interaction Import Corp", date.today().isoformat(), "email", "Sent proposal"]],
         )
         resp = client.post(
             "/settings/data/import",
-            data={"entity_type": "contacts", "csv_file": (csv_file, "test.csv")},
+            data={"entity_type": "interactions", "csv_file": (csv_file, "test.csv")},
             content_type="multipart/form-data",
         )
         assert resp.status_code == 200
-        ct = Contact.query.filter_by(client_id=c.id).first()
-        assert ct is not None
-        assert ct.contact_type == "email"
+        ix = Interaction.query.filter_by(company_id=c.id).first()
+        assert ix is not None
+        assert ix.interaction_type == "email"
 
-    def test_unknown_client_error(self, client, admin_user):
+    def test_unknown_company_error(self, client, admin_user):
         login_as(client, admin_user)
         csv_file = _make_csv(
-            ["company_name", "contact_type"],
+            ["company_name", "interaction_type"],
             [["Nonexistent Corp", "phone"]],
         )
         resp = client.post(
             "/settings/data/import",
-            data={"entity_type": "contacts", "csv_file": (csv_file, "test.csv")},
+            data={"entity_type": "interactions", "csv_file": (csv_file, "test.csv")},
             content_type="multipart/form-data",
         )
         assert resp.status_code == 200
-        assert b"No client found" in resp.data
+        assert b"No company found" in resp.data
 
-    def test_ambiguous_client_error(self, client, admin_user):
+    def test_ambiguous_company_error(self, client, admin_user):
         login_as(client, admin_user)
-        make_client(admin_user, company_name="Dupe Corp")
-        make_client(admin_user, company_name="Dupe Corp")
+        make_company(admin_user, company_name="Dupe Corp")
+        make_company(admin_user, company_name="Dupe Corp")
         csv_file = _make_csv(
-            ["company_name", "contact_type"],
+            ["company_name", "interaction_type"],
             [["Dupe Corp", "phone"]],
         )
         resp = client.post(
             "/settings/data/import",
-            data={"entity_type": "contacts", "csv_file": (csv_file, "test.csv")},
+            data={"entity_type": "interactions", "csv_file": (csv_file, "test.csv")},
             content_type="multipart/form-data",
         )
         assert resp.status_code == 200
-        assert b"Multiple clients" in resp.data
+        assert b"Multiple companies" in resp.data
 
     def test_defaults_applied(self, client, admin_user):
         login_as(client, admin_user)
-        c = make_client(admin_user, company_name="Default Corp")
+        c = make_company(admin_user, company_name="Default Corp")
         csv_file = _make_csv(
             ["company_name"],
             [["Default Corp"]],
         )
         resp = client.post(
             "/settings/data/import",
-            data={"entity_type": "contacts", "csv_file": (csv_file, "test.csv")},
+            data={"entity_type": "interactions", "csv_file": (csv_file, "test.csv")},
             content_type="multipart/form-data",
         )
         assert resp.status_code == 200
-        ct = Contact.query.filter_by(client_id=c.id).first()
-        assert ct is not None
-        assert ct.contact_type == "phone"  # Default
-        assert ct.date == date.today()  # Default
-        assert ct.user_id == admin_user.id  # Default to current admin
+        ix = Interaction.query.filter_by(company_id=c.id).first()
+        assert ix is not None
+        assert ix.interaction_type == "phone"  # Default
+        assert ix.date == date.today()  # Default
+        assert ix.user_id == admin_user.id  # Default to current admin
 
 
 # ── Import Follow-ups ─────────────────────────────────────────
@@ -379,7 +379,7 @@ class TestImportContacts:
 class TestImportFollowups:
     def test_valid_csv(self, client, admin_user):
         login_as(client, admin_user)
-        c = make_client(admin_user, company_name="FU Import Corp")
+        c = make_company(admin_user, company_name="FU Import Corp")
         csv_file = _make_csv(
             ["company_name", "due_date", "priority", "notes"],
             [["FU Import Corp", date.today().isoformat(), "high", "Urgent task"]],
@@ -390,13 +390,13 @@ class TestImportFollowups:
             content_type="multipart/form-data",
         )
         assert resp.status_code == 200
-        fu = FollowUp.query.filter_by(client_id=c.id).first()
+        fu = FollowUp.query.filter_by(company_id=c.id).first()
         assert fu is not None
         assert fu.priority == "high"
 
     def test_invalid_priority_error(self, client, admin_user):
         login_as(client, admin_user)
-        c = make_client(admin_user, company_name="Priority Corp")
+        c = make_company(admin_user, company_name="Priority Corp")
         csv_file = _make_csv(
             ["company_name", "priority"],
             [["Priority Corp", "urgent"]],  # Invalid priority
@@ -411,7 +411,7 @@ class TestImportFollowups:
 
     def test_completed_boolean_variants(self, client, admin_user):
         login_as(client, admin_user)
-        c = make_client(admin_user, company_name="Bool Corp")
+        c = make_company(admin_user, company_name="Bool Corp")
         csv_file = _make_csv(
             ["company_name", "completed"],
             [
@@ -426,7 +426,7 @@ class TestImportFollowups:
             content_type="multipart/form-data",
         )
         assert resp.status_code == 200
-        followups = FollowUp.query.filter_by(client_id=c.id).all()
+        followups = FollowUp.query.filter_by(company_id=c.id).all()
         assert len(followups) == 3
         assert all(fu.completed for fu in followups)
 
@@ -444,7 +444,7 @@ class TestImportErrorReport:
         )
         client.post(
             "/settings/data/import",
-            data={"entity_type": "clients", "csv_file": (csv_file, "test.csv")},
+            data={"entity_type": "companies", "csv_file": (csv_file, "test.csv")},
             content_type="multipart/form-data",
         )
         # Now download the error report

@@ -4,8 +4,8 @@ from datetime import date, timedelta
 
 from extensions import db
 from models.user import User, ROLES
-from models.client import Client
-from models.contact import Contact
+from models.company import Company
+from models.interaction import Interaction
 from models.followup import FollowUp
 from models.attachment import Attachment
 from models.app_settings import AppSettings
@@ -49,47 +49,47 @@ class TestUserModel:
         assert ROLES == ["user", "manager", "admin"]
 
 
-# ── Client model ────────────────────────────────────────────────
+# ── Company model ──────────────────────────────────────────────
 
 
-class TestClientModel:
+class TestCompanyModel:
     def test_default_status_is_lead(self, app):
         admin = User.query.filter_by(username="admin").first()
-        c = Client(company_name="Defaults Ltd", user_id=admin.id)
+        c = Company(company_name="Defaults Ltd", user_id=admin.id)
         db.session.add(c)
         db.session.commit()
         assert c.status == "lead"
 
-    def test_cascade_delete_contacts_and_followups(self, app):
+    def test_cascade_delete_interactions_and_followups(self, app):
         admin = User.query.filter_by(username="admin").first()
-        c = Client(company_name="Cascade Corp", user_id=admin.id)
+        c = Company(company_name="Cascade Corp", user_id=admin.id)
         db.session.add(c)
         db.session.flush()
 
-        ct = Contact(client_id=c.id, contact_type="phone", user_id=admin.id)
-        fu = FollowUp(client_id=c.id, priority="high", user_id=admin.id)
-        db.session.add_all([ct, fu])
+        ix = Interaction(company_id=c.id, interaction_type="phone", user_id=admin.id)
+        fu = FollowUp(company_id=c.id, priority="high", user_id=admin.id)
+        db.session.add_all([ix, fu])
         db.session.commit()
 
-        assert Contact.query.count() >= 1
+        assert Interaction.query.count() >= 1
         assert FollowUp.query.count() >= 1
 
         db.session.delete(c)
         db.session.commit()
 
-        assert Contact.query.filter_by(client_id=c.id).count() == 0
-        assert FollowUp.query.filter_by(client_id=c.id).count() == 0
+        assert Interaction.query.filter_by(company_id=c.id).count() == 0
+        assert FollowUp.query.filter_by(company_id=c.id).count() == 0
 
     def test_cascade_delete_attachments(self, app):
         admin = User.query.filter_by(username="admin").first()
-        c = Client(company_name="Attach Corp", user_id=admin.id)
+        c = Company(company_name="Attach Corp", user_id=admin.id)
         db.session.add(c)
         db.session.flush()
 
         att = Attachment(
             filename="test.pdf",
             stored_filename="abc_test.pdf",
-            client_id=c.id,
+            company_id=c.id,
             file_size=1024,
         )
         db.session.add(att)
@@ -107,12 +107,12 @@ class TestClientModel:
 class TestFollowUpModel:
     def test_is_overdue_past_incomplete(self, app):
         admin = User.query.filter_by(username="admin").first()
-        c = Client(company_name="FU Corp", user_id=admin.id)
+        c = Company(company_name="FU Corp", user_id=admin.id)
         db.session.add(c)
         db.session.flush()
 
         fu = FollowUp(
-            client_id=c.id,
+            company_id=c.id,
             due_date=date.today() - timedelta(days=3),
             completed=False,
             user_id=admin.id,
@@ -123,12 +123,12 @@ class TestFollowUpModel:
 
     def test_is_overdue_completed(self, app):
         admin = User.query.filter_by(username="admin").first()
-        c = Client(company_name="FU2 Corp", user_id=admin.id)
+        c = Company(company_name="FU2 Corp", user_id=admin.id)
         db.session.add(c)
         db.session.flush()
 
         fu = FollowUp(
-            client_id=c.id,
+            company_id=c.id,
             due_date=date.today() - timedelta(days=3),
             completed=True,
             user_id=admin.id,
@@ -139,12 +139,12 @@ class TestFollowUpModel:
 
     def test_is_overdue_future(self, app):
         admin = User.query.filter_by(username="admin").first()
-        c = Client(company_name="FU3 Corp", user_id=admin.id)
+        c = Company(company_name="FU3 Corp", user_id=admin.id)
         db.session.add(c)
         db.session.flush()
 
         fu = FollowUp(
-            client_id=c.id,
+            company_id=c.id,
             due_date=date.today() + timedelta(days=5),
             completed=False,
             user_id=admin.id,
@@ -155,12 +155,12 @@ class TestFollowUpModel:
 
     def test_is_overdue_today(self, app):
         admin = User.query.filter_by(username="admin").first()
-        c = Client(company_name="FU4 Corp", user_id=admin.id)
+        c = Company(company_name="FU4 Corp", user_id=admin.id)
         db.session.add(c)
         db.session.flush()
 
         fu = FollowUp(
-            client_id=c.id,
+            company_id=c.id,
             due_date=date.today(),
             completed=False,
             user_id=admin.id,
@@ -171,11 +171,11 @@ class TestFollowUpModel:
 
     def test_default_priority(self, app):
         admin = User.query.filter_by(username="admin").first()
-        c = Client(company_name="DefPri Corp", user_id=admin.id)
+        c = Company(company_name="DefPri Corp", user_id=admin.id)
         db.session.add(c)
         db.session.flush()
 
-        fu = FollowUp(client_id=c.id, user_id=admin.id)
+        fu = FollowUp(company_id=c.id, user_id=admin.id)
         db.session.add(fu)
         db.session.commit()
         assert fu.priority == "medium"
@@ -190,7 +190,7 @@ class TestAttachmentModel:
             filename="doc.pdf",
             stored_filename="x_doc.pdf",
             description="My Document",
-            client_id=1,
+            company_id=1,
         )
         assert a.display_name == "My Document"
 
@@ -198,44 +198,44 @@ class TestAttachmentModel:
         a = Attachment(
             filename="doc.pdf",
             stored_filename="x_doc.pdf",
-            client_id=1,
+            company_id=1,
         )
         assert a.display_name == "doc.pdf"
 
     def test_file_size_display_bytes(self, app):
-        a = Attachment(filename="f", stored_filename="f", client_id=1, file_size=512)
+        a = Attachment(filename="f", stored_filename="f", company_id=1, file_size=512)
         assert a.file_size_display == "512 B"
 
     def test_file_size_display_kb(self, app):
-        a = Attachment(filename="f", stored_filename="f", client_id=1, file_size=2048)
+        a = Attachment(filename="f", stored_filename="f", company_id=1, file_size=2048)
         assert a.file_size_display == "2.0 KB"
 
     def test_file_size_display_mb(self, app):
-        a = Attachment(filename="f", stored_filename="f", client_id=1, file_size=2 * 1024 * 1024)
+        a = Attachment(filename="f", stored_filename="f", company_id=1, file_size=2 * 1024 * 1024)
         assert a.file_size_display == "2.0 MB"
 
     def test_is_previewable_image(self, app):
-        a = Attachment(filename="f", stored_filename="f", client_id=1, mime_type="image/png")
+        a = Attachment(filename="f", stored_filename="f", company_id=1, mime_type="image/png")
         assert a.is_previewable is True
 
     def test_is_previewable_pdf(self, app):
-        a = Attachment(filename="f", stored_filename="f", client_id=1, mime_type="application/pdf")
+        a = Attachment(filename="f", stored_filename="f", company_id=1, mime_type="application/pdf")
         assert a.is_previewable is True
 
     def test_is_previewable_false(self, app):
-        a = Attachment(filename="f", stored_filename="f", client_id=1, mime_type="application/zip")
+        a = Attachment(filename="f", stored_filename="f", company_id=1, mime_type="application/zip")
         assert a.is_previewable is False
 
     def test_icon_image(self, app):
-        a = Attachment(filename="f", stored_filename="f", client_id=1, mime_type="image/jpeg")
+        a = Attachment(filename="f", stored_filename="f", company_id=1, mime_type="image/jpeg")
         assert a.icon == "bi-file-image"
 
     def test_icon_pdf(self, app):
-        a = Attachment(filename="f", stored_filename="f", client_id=1, mime_type="application/pdf")
+        a = Attachment(filename="f", stored_filename="f", company_id=1, mime_type="application/pdf")
         assert a.icon == "bi-file-pdf"
 
     def test_icon_fallback(self, app):
-        a = Attachment(filename="f", stored_filename="f", client_id=1, mime_type="application/zip")
+        a = Attachment(filename="f", stored_filename="f", company_id=1, mime_type="application/zip")
         assert a.icon == "bi-file-earmark"
 
 

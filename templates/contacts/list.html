@@ -1,34 +1,33 @@
 {% extends "base.html" %}
 
-{% block title %}Interactions — NextStep CRM{% endblock %}
+{% block title %}Contacts — NextStep CRM{% endblock %}
 
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
-    <h1>Interactions</h1>
+    <h1>Contacts</h1>
     <a href="{{ url_for('contacts.create_contact') }}" class="btn btn-primary">
-        <i class="bi bi-plus-lg me-1"></i>Log Interaction
+        <i class="bi bi-plus-lg me-1"></i>Add Contact
     </a>
 </div>
 
-<!-- Filters -->
+<!-- Search & Filter -->
 <form method="GET" class="row g-3 mb-4">
-    <div class="col-md-3">
-        <select name="type" class="form-select">
-            <option value="">All Types</option>
-            {% for t in contact_types %}
-                <option value="{{ t }}" {% if selected_type == t %}selected{% endif %}>
-                    {{ t|capitalize }}
+    <div class="col-md-5">
+        <div class="input-group">
+            <span class="input-group-text"><i class="bi bi-search"></i></span>
+            <input type="text" name="q" class="form-control" placeholder="Search by name or email..."
+                   value="{{ q }}">
+        </div>
+    </div>
+    <div class="col-md-4">
+        <select name="company_id" class="form-select">
+            <option value="">All Companies</option>
+            {% for co in companies %}
+                <option value="{{ co.id }}" {% if selected_company_id == co.id|string %}selected{% endif %}>
+                    {{ co.company_name }}
                 </option>
             {% endfor %}
         </select>
-    </div>
-    <div class="col-md-3">
-        <input type="date" name="date_from" class="form-control" placeholder="From"
-               value="{{ date_from }}" title="From date">
-    </div>
-    <div class="col-md-3">
-        <input type="date" name="date_to" class="form-control" placeholder="To"
-               value="{{ date_to }}" title="To date">
     </div>
     <div class="col-md-3">
         <button type="submit" class="btn btn-outline-primary w-100">Filter</button>
@@ -36,61 +35,56 @@
 </form>
 
 {% if contacts %}
-{% if current_user.has_role_at_least("manager") %}
-<div id="bulkToolbar" class="alert alert-secondary d-flex align-items-center gap-3 mb-3" style="display: none !important;">
-    <span><strong id="bulkCount">0</strong> selected</span>
-    <select id="bulkReassignUser" class="form-select form-select-sm" style="width: auto; min-width: 160px;">
-        <option value="">Reassign to...</option>
-        {% for u in all_users if u.is_active_user %}
-        <option value="{{ u.id }}">{{ u.display_name }}</option>
-        {% endfor %}
-    </select>
-    <button id="bulkReassignBtn" class="btn btn-sm btn-primary" data-url="{{ url_for('contacts.bulk_reassign_contacts') }}">
-        <i class="bi bi-arrow-left-right me-1"></i>Reassign
-    </button>
-</div>
-{% endif %}
 <div class="table-responsive">
     <table class="table table-hover align-middle">
         <thead class="table-light">
             <tr>
-                {% if current_user.has_role_at_least("manager") %}
-                <th style="width: 2rem;"><input type="checkbox" class="form-check-input" id="bulkSelectAll"></th>
-                {% endif %}
-                <th>Date</th>
-                <th>Client</th>
-                <th>Type</th>
-                <th>Notes</th>
-                <th>Outcome</th>
-                {% if current_user.has_role_at_least("manager") %}<th>Owner</th>{% endif %}
+                <th>Name</th>
+                <th>Job Title</th>
+                <th>Company</th>
+                <th>Email</th>
+                <th>Phone</th>
+                <th>Social</th>
                 <th class="text-end">Actions</th>
             </tr>
         </thead>
         <tbody>
             {% for contact in contacts %}
             <tr>
-                {% if current_user.has_role_at_least("manager") %}
-                <td><input type="checkbox" class="form-check-input bulk-select-cb" value="{{ contact.id }}"></td>
-                {% endif %}
-                <td data-label="Date">{{ contact.date|relative_date }}</td>
-                <td data-label="Client">
-                    <a href="{{ url_for('clients.detail_client', id=contact.client_id) }}" class="text-decoration-none">
-                        {{ contact.client.company_name }}
+                <td>
+                    <a href="{{ url_for('contacts.detail_contact', id=contact.id) }}" class="text-decoration-none fw-semibold">
+                        {{ contact.full_name }}
                     </a>
+                    {% if contact.is_primary %}<span class="badge bg-primary ms-1">Primary</span>{% endif %}
                 </td>
-                <td data-label="Type"><span class="badge" style="background-color: {{ interaction_types_map.get(contact.contact_type, {}).colour|default('#6c757d') }}">{{ contact.contact_type|capitalize }}</span></td>
-                <td data-label="Notes">{{ contact.notes[:60] }}{% if contact.notes|length > 60 %}...{% endif %}</td>
-                <td data-label="Outcome">{{ contact.outcome or '—' }}</td>
-                {% if current_user.has_role_at_least("manager") %}
-                <td data-label="Owner">{{ contact.owner.display_name if contact.owner else '—' }}</td>
-                {% endif %}
-                <td data-label="Actions" class="text-end">
+                <td>{{ contact.job_title or '—' }}</td>
+                <td>
+                    {% if contact.company %}
+                    <a href="{{ url_for('companies.detail_company', id=contact.company_id) }}" class="text-decoration-none">
+                        {{ contact.company.company_name }}
+                    </a>
+                    {% else %}
+                    <span class="text-muted">—</span>
+                    {% endif %}
+                </td>
+                <td>{{ contact.email or '—' }}</td>
+                <td>{{ contact.phone or '—' }}</td>
+                <td>
+                    {% for sa in contact.social_accounts %}
+                    {% if sa.url %}
+                    <a href="{{ sa.url }}" target="_blank" rel="noopener" title="{{ sa.platform }}"><i class="bi {{ sa.icon }} me-1"></i></a>
+                    {% else %}
+                    <i class="bi {{ sa.icon }} me-1 text-muted" title="{{ sa.handle }}"></i>
+                    {% endif %}
+                    {% endfor %}
+                </td>
+                <td class="text-end">
                     <a href="{{ url_for('contacts.edit_contact', id=contact.id) }}" class="btn btn-sm btn-outline-secondary">
                         <i class="bi bi-pencil"></i>
                     </a>
                     <button type="button" class="btn btn-sm btn-outline-danger"
                             data-bs-toggle="modal" data-bs-target="#confirmDeleteModal"
-                            data-item-name="this interaction"
+                            data-item-name="{{ contact.full_name }}"
                             data-delete-url="{{ url_for('contacts.delete_contact', id=contact.id) }}">
                         <i class="bi bi-trash"></i>
                     </button>
@@ -103,9 +97,9 @@
 {% include "partials/_pagination.html" %}
 {% else %}
 <div class="empty-state">
-    <i class="bi bi-chat-dots d-block"></i>
-    <h5>No interactions found</h5>
-    <p>{% if selected_type or date_from or date_to %}Try adjusting your filters.{% else %}Log your first client interaction to get started. <a href="{{ url_for('contacts.create_contact') }}">Log one now</a>{% endif %}</p>
+    <i class="bi bi-people d-block"></i>
+    <h5>No contacts found</h5>
+    <p>{% if q or selected_company_id %}Try adjusting your search or filters.{% else %}Add your first contact to get started. <a href="{{ url_for('contacts.create_contact') }}">Add one now</a>{% endif %}</p>
 </div>
 {% endif %}
 {% endblock %}

@@ -7,8 +7,8 @@ from datetime import date, datetime, time
 from sqlalchemy import func
 
 from extensions import db
-from models.client import CLIENT_STATUSES, Client
-from models.contact import Contact
+from models.company import COMPANY_STATUSES, Company
+from models.interaction import Interaction
 from models.custom_field import CustomFieldDefinition, CustomFieldValue
 from models.followup import PRIORITIES, FollowUp
 from models.user import User
@@ -16,13 +16,13 @@ from models.user import User
 
 # ── Column definitions ─────────────────────────────────────────
 
-CLIENT_COLUMNS = [
+COMPANY_COLUMNS = [
     "company_name", "industry", "phone", "email",
     "contact_person", "status", "owner",
 ]
 
-CONTACT_COLUMNS = [
-    "company_name", "date", "time", "contact_type",
+INTERACTION_COLUMNS = [
+    "company_name", "date", "time", "interaction_type",
     "notes", "outcome", "owner",
 ]
 
@@ -32,8 +32,8 @@ FOLLOWUP_COLUMNS = [
 ]
 
 ENTITY_COLUMNS = {
-    "clients": CLIENT_COLUMNS,
-    "contacts": CONTACT_COLUMNS,
+    "companies": COMPANY_COLUMNS,
+    "interactions": INTERACTION_COLUMNS,
     "followups": FOLLOWUP_COLUMNS,
 }
 
@@ -64,17 +64,17 @@ def _resolve_owner(username):
     return user, None
 
 
-def _resolve_client(company_name):
-    """Resolve a company name to a client ID. Returns (client_id, error_msg)."""
+def _resolve_company(company_name):
+    """Resolve a company name to a company ID. Returns (company_id, error_msg)."""
     if not company_name or not company_name.strip():
         return None, "company_name is required"
-    matches = Client.query.filter(
-        func.lower(Client.company_name) == company_name.strip().lower()
+    matches = Company.query.filter(
+        func.lower(Company.company_name) == company_name.strip().lower()
     ).all()
     if len(matches) == 0:
-        return None, f"No client found with company_name: '{company_name}'"
+        return None, f"No company found with company_name: '{company_name}'"
     if len(matches) > 1:
-        return None, f"Multiple clients match company_name: '{company_name}'"
+        return None, f"Multiple companies match company_name: '{company_name}'"
     return matches[0].id, None
 
 
@@ -140,31 +140,31 @@ def generate_export_csv(entity_type):
     """Generate a CSV StringIO with all records for the given entity type."""
     output = io.StringIO()
 
-    if entity_type == "clients":
-        return _export_clients(output)
-    elif entity_type == "contacts":
-        return _export_contacts(output)
+    if entity_type == "companies":
+        return _export_companies(output)
+    elif entity_type == "interactions":
+        return _export_interactions(output)
     elif entity_type == "followups":
         return _export_followups(output)
     else:
         raise ValueError(f"Unknown entity type: {entity_type}")
 
 
-def _export_clients(output):
+def _export_companies(output):
     cf_labels = _active_custom_field_labels()
-    columns = CLIENT_COLUMNS + cf_labels
+    columns = COMPANY_COLUMNS + cf_labels
 
     writer = csv.DictWriter(output, fieldnames=columns)
     writer.writeheader()
 
-    clients = (
-        db.session.query(Client, User.username)
-        .outerjoin(User, Client.user_id == User.id)
-        .order_by(Client.company_name)
+    companies = (
+        db.session.query(Company, User.username)
+        .outerjoin(User, Company.user_id == User.id)
+        .order_by(Company.company_name)
         .all()
     )
 
-    # Pre-load custom field values keyed by client_id
+    # Pre-load custom field values keyed by company_id
     cf_defs = (
         CustomFieldDefinition.query
         .filter_by(is_active=True)
@@ -177,11 +177,11 @@ def _export_clients(output):
             CustomFieldValue.definition_id.in_([d.id for d in cf_defs])
         ).all()
         for v in all_vals:
-            cf_values.setdefault(v.client_id, {})[v.definition_id] = v.value
+            cf_values.setdefault(v.company_id, {})[v.definition_id] = v.value
 
     cf_id_to_label = {d.id: d.label for d in cf_defs}
 
-    for c, owner_username in clients:
+    for c, owner_username in companies:
         row = {
             "company_name": c.company_name,
             "industry": c.industry or "",
@@ -191,33 +191,33 @@ def _export_clients(output):
             "status": c.status,
             "owner": owner_username or "",
         }
-        client_cf = cf_values.get(c.id, {})
+        company_cf = cf_values.get(c.id, {})
         for d in cf_defs:
-            row[cf_id_to_label[d.id]] = client_cf.get(d.id, "")
+            row[cf_id_to_label[d.id]] = company_cf.get(d.id, "")
         writer.writerow(row)
 
     output.seek(0)
     return output
 
 
-def _export_contacts(output):
-    writer = csv.DictWriter(output, fieldnames=CONTACT_COLUMNS)
+def _export_interactions(output):
+    writer = csv.DictWriter(output, fieldnames=INTERACTION_COLUMNS)
     writer.writeheader()
 
-    contacts = (
-        db.session.query(Contact, Client.company_name, User.username)
-        .join(Client, Contact.client_id == Client.id)
-        .outerjoin(User, Contact.user_id == User.id)
-        .order_by(Contact.date.desc())
+    interactions = (
+        db.session.query(Interaction, Company.company_name, User.username)
+        .join(Company, Interaction.company_id == Company.id)
+        .outerjoin(User, Interaction.user_id == User.id)
+        .order_by(Interaction.date.desc())
         .all()
     )
 
-    for ct, company_name, owner_username in contacts:
+    for ct, company_name, owner_username in interactions:
         writer.writerow({
             "company_name": company_name,
             "date": ct.date.isoformat() if ct.date else "",
             "time": ct.time.strftime("%H:%M") if ct.time else "",
-            "contact_type": ct.contact_type or "",
+            "interaction_type": ct.interaction_type or "",
             "notes": ct.notes or "",
             "outcome": ct.outcome or "",
             "owner": owner_username or "",
@@ -232,8 +232,8 @@ def _export_followups(output):
     writer.writeheader()
 
     followups = (
-        db.session.query(FollowUp, Client.company_name, User.username)
-        .join(Client, FollowUp.client_id == Client.id)
+        db.session.query(FollowUp, Company.company_name, User.username)
+        .join(Company, FollowUp.company_id == Company.id)
         .outerjoin(User, FollowUp.user_id == User.id)
         .order_by(FollowUp.due_date.desc())
         .all()
@@ -260,9 +260,9 @@ def generate_template_csv(entity_type):
     """Generate a CSV StringIO with headers and 2 example rows."""
     output = io.StringIO()
 
-    if entity_type == "clients":
+    if entity_type == "companies":
         cf_labels = _active_custom_field_labels()
-        columns = CLIENT_COLUMNS + cf_labels
+        columns = COMPANY_COLUMNS + cf_labels
         examples = [
             {
                 "company_name": "Acme Ltd",
@@ -286,14 +286,14 @@ def generate_template_csv(entity_type):
         for label in cf_labels:
             examples[0][label] = ""
             examples[1][label] = ""
-    elif entity_type == "contacts":
-        columns = CONTACT_COLUMNS
+    elif entity_type == "interactions":
+        columns = INTERACTION_COLUMNS
         examples = [
             {
                 "company_name": "Acme Ltd",
                 "date": date.today().isoformat(),
                 "time": "14:30",
-                "contact_type": "phone",
+                "interaction_type": "phone",
                 "notes": "Discussed new contract",
                 "outcome": "Follow-up scheduled",
                 "owner": "",
@@ -302,7 +302,7 @@ def generate_template_csv(entity_type):
                 "company_name": "Globex Corp",
                 "date": date.today().isoformat(),
                 "time": "",
-                "contact_type": "email",
+                "interaction_type": "email",
                 "notes": "Sent proposal",
                 "outcome": "Awaiting response",
                 "owner": "",
@@ -354,17 +354,17 @@ def validate_and_import(entity_type, file_stream, current_user):
     if not rows:
         return {"imported": 0, "skipped": 0, "errors": [], "warnings": ["File is empty or contains only headers."]}
 
-    if entity_type == "clients":
-        return _import_clients(headers, rows, current_user)
-    elif entity_type == "contacts":
-        return _import_contacts(headers, rows, current_user)
+    if entity_type == "companies":
+        return _import_companies(headers, rows, current_user)
+    elif entity_type == "interactions":
+        return _import_interactions(headers, rows, current_user)
     elif entity_type == "followups":
         return _import_followups(headers, rows, current_user)
     else:
         return {"imported": 0, "skipped": 0, "errors": [], "warnings": [f"Unknown entity type: {entity_type}"]}
 
 
-def _import_clients(headers, rows, current_user):
+def _import_companies(headers, rows, current_user):
     errors = []
     warnings = []
     valid_records = []
@@ -389,8 +389,8 @@ def _import_clients(headers, rows, current_user):
 
         status = row.get("status", "").strip().lower()
         if status:
-            if status not in CLIENT_STATUSES:
-                row_errors.append(f"Invalid status: '{status}' (valid: {', '.join(CLIENT_STATUSES)})")
+            if status not in COMPANY_STATUSES:
+                row_errors.append(f"Invalid status: '{status}' (valid: {', '.join(COMPANY_STATUSES)})")
         else:
             status = "lead"
 
@@ -435,13 +435,13 @@ def _import_clients(headers, rows, current_user):
     try:
         for rec in valid_records:
             cf_vals = rec.pop("cf_values")
-            client = Client(**rec)
-            db.session.add(client)
-            db.session.flush()  # Get client.id for custom fields
+            company = Company(**rec)
+            db.session.add(company)
+            db.session.flush()  # Get company.id for custom fields
             for def_id, val in cf_vals.items():
                 cfv = CustomFieldValue(
                     definition_id=def_id,
-                    client_id=client.id,
+                    company_id=company.id,
                     value=val,
                 )
                 db.session.add(cfv)
@@ -460,7 +460,7 @@ def _import_clients(headers, rows, current_user):
     }
 
 
-def _import_contacts(headers, rows, current_user):
+def _import_interactions(headers, rows, current_user):
     errors = []
     warnings = []
     valid_records = []
@@ -469,9 +469,9 @@ def _import_contacts(headers, rows, current_user):
         row_errors = []
 
         company_name = row.get("company_name", "").strip()
-        client_id, client_err = _resolve_client(company_name)
-        if client_err:
-            row_errors.append(client_err)
+        company_id, company_err = _resolve_company(company_name)
+        if company_err:
+            row_errors.append(company_err)
 
         dt, dt_err = _parse_date(row.get("date", ""), "date")
         if dt_err:
@@ -481,7 +481,7 @@ def _import_contacts(headers, rows, current_user):
         if tm_err:
             row_errors.append(tm_err)
 
-        contact_type = row.get("contact_type", "").strip() or "phone"
+        interaction_type = row.get("interaction_type", "").strip() or "phone"
 
         owner_username = row.get("owner", "").strip()
         owner_user = None
@@ -501,10 +501,10 @@ def _import_contacts(headers, rows, current_user):
             continue
 
         valid_records.append({
-            "client_id": client_id,
+            "company_id": company_id,
             "date": dt,
             "time": tm,
-            "contact_type": contact_type,
+            "interaction_type": interaction_type,
             "notes": row.get("notes", "").strip(),
             "outcome": row.get("outcome", "").strip(),
             "user_id": owner_user.id if owner_user else None,
@@ -513,7 +513,7 @@ def _import_contacts(headers, rows, current_user):
     imported = 0
     try:
         for rec in valid_records:
-            db.session.add(Contact(**rec))
+            db.session.add(Interaction(**rec))
             imported += 1
         db.session.commit()
     except Exception as e:
@@ -538,9 +538,9 @@ def _import_followups(headers, rows, current_user):
         row_errors = []
 
         company_name = row.get("company_name", "").strip()
-        client_id, client_err = _resolve_client(company_name)
-        if client_err:
-            row_errors.append(client_err)
+        company_id, company_err = _resolve_company(company_name)
+        if company_err:
+            row_errors.append(company_err)
 
         dt, dt_err = _parse_date(row.get("due_date", ""), "due_date")
         if dt_err:
@@ -576,7 +576,7 @@ def _import_followups(headers, rows, current_user):
             continue
 
         valid_records.append({
-            "client_id": client_id,
+            "company_id": company_id,
             "due_date": dt,
             "due_time": tm,
             "priority": priority,

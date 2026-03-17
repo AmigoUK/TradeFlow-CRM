@@ -2,11 +2,11 @@ from datetime import datetime
 
 from extensions import db
 
-CLIENT_STATUSES = ["lead", "prospect", "active", "inactive"]
+COMPANY_STATUSES = ["lead", "prospect", "active", "inactive"]
 
 
-class Client(db.Model):
-    __tablename__ = "clients"
+class Company(db.Model):
+    __tablename__ = "companies"
 
     id = db.Column(db.Integer, primary_key=True)
     company_name = db.Column(db.String(200), nullable=False)
@@ -21,18 +21,24 @@ class Client(db.Model):
         db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
     )
 
-    contacts = db.relationship(
-        "Contact", backref="client", cascade="all, delete-orphan", lazy=True
+    interactions = db.relationship(
+        "Interaction", backref="company", cascade="all, delete-orphan", lazy=True
     )
     followups = db.relationship(
-        "FollowUp", backref="client", cascade="all, delete-orphan", lazy=True
+        "FollowUp", backref="company", cascade="all, delete-orphan", lazy=True
     )
     custom_field_values = db.relationship(
-        "CustomFieldValue", backref="client", cascade="all, delete-orphan", lazy=True
+        "CustomFieldValue", backref="company", cascade="all, delete-orphan", lazy=True
     )
     attachments = db.relationship(
-        "Attachment", backref="client", cascade="all, delete-orphan", lazy=True
+        "Attachment", backref="company", cascade="all, delete-orphan", lazy=True
+    )
+    contacts = db.relationship(
+        "Contact",
+        backref="company",
+        foreign_keys="Contact.company_id",
+        lazy=True,
     )
 
     def __repr__(self):
-        return f"<Client {self.company_name}>"
+        return f"<Company {self.company_name}>"

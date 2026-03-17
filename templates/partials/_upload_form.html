@@ -14,7 +14,7 @@
         <div class="modal-content">
             <form action="{{ url_for('attachments.upload') }}" method="POST" enctype="multipart/form-data">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <input type="hidden" name="client_id" value="{{ client_id }}">
+                <input type="hidden" name="company_id" value="{{ company_id }}">
                 {% if contact_id %}
                 <input type="hidden" name="contact_id" value="{{ contact_id }}">
                 {% endif %}

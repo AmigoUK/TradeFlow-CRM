@@ -1,0 +1,123 @@
+<form method="POST" enctype="multipart/form-data">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="mb-3">
+        <label for="company_id" class="form-label">Company <span class="text-danger">*</span></label>
+        <select class="form-select" id="company_id" name="company_id" required>
+            <option value="">Select a company...</option>
+            {% for co in companies %}
+                <option value="{{ co.id }}"
+                    {% if selected_company_id == co.id %}selected{% endif %}>
+                    {{ co.company_name }}
+                </option>
+            {% endfor %}
+        </select>
+    </div>
+
+    {% if company_contacts is defined and company_contacts %}
+    <div class="mb-3">
+        <label for="contact_id" class="form-label">Contact Person <small class="text-muted">(optional)</small></label>
+        <select class="form-select" id="contact_id" name="contact_id">
+            <option value="">— None —</option>
+            {% for ct in company_contacts %}
+                <option value="{{ ct.id }}"
+                    {% if interaction and interaction.contact_id == ct.id %}selected{% endif %}>
+                    {{ ct.full_name }}{% if ct.is_primary %} (Primary){% endif %}
+                </option>
+            {% endfor %}
+        </select>
+    </div>
+    {% endif %}
+
+    <div class="row">
+        <div class="col-md-4 mb-3">
+            <label for="date" class="form-label">Date</label>
+            <input type="date" class="form-control" id="date" name="date"
+                   value="{{ interaction.date.isoformat() if interaction else today }}">
+        </div>
+        <div class="col-md-4 mb-3">
+            <label for="time" class="form-label">Time <small class="text-muted">(optional)</small></label>
+            <input type="time" class="form-control" id="time" name="time"
+                   value="{{ interaction.time.strftime('%H:%M') if interaction and interaction.time else '' }}">
+        </div>
+        <div class="col-md-4 mb-3">
+            <label for="interaction_type" class="form-label">Type</label>
+            <select class="form-select" id="interaction_type" name="interaction_type">
+                {% for t in interaction_types %}
+                    <option value="{{ t }}"
+                        {% if interaction and interaction.interaction_type == t %}selected{% endif %}>
+                        {{ t|capitalize }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+
+    <div class="mb-3">
+        <label for="notes" class="form-label">Notes</label>
+        <textarea class="form-control" id="notes" name="notes" rows="4">{{ interaction.notes if interaction else (prefill_notes or '') }}</textarea>
+    </div>
+
+    <div class="mb-3">
+        <label for="outcome" class="form-label">Outcome</label>
+        <input type="text" class="form-control" id="outcome" name="outcome"
+               value="{{ interaction.outcome if interaction else '' }}"
+               placeholder="e.g. Agreed to follow-up call next week">
+    </div>
+
+    {% if google_connected %}
+    <div class="card mb-3 border-info">
+        <div class="card-body py-2 px-3">
+            <div class="form-check mb-1">
+                <input class="form-check-input" type="checkbox" id="sync_to_google" name="sync_to_google"
+                       {{ 'checked' if interaction and interaction.calendar_sync }}>
+                <label class="form-check-label" for="sync_to_google">
+                    <i class="bi bi-calendar3 me-1 text-primary"></i>Sync to Google Calendar
+                </label>
+                <small class="text-muted d-block ms-4">Creates an event in your Google Calendar with this date and time</small>
+            </div>
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="create_meet" name="create_meet">
+                <label class="form-check-label" for="create_meet">
+                    <i class="bi bi-camera-video me-1 text-success"></i>Create Google Meet link
+                </label>
+                <small class="text-muted d-block ms-4">Generates a video meeting link you can share</small>
+            </div>
+            {% if interaction and interaction.meet_link %}
+            <div class="mt-2">
+                <a href="{{ interaction.meet_link }}" target="_blank" rel="noopener" class="btn btn-sm btn-outline-success">
+                    <i class="bi bi-camera-video me-1"></i>Join Meeting
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    {% elif google_enabled %}
+    <div class="alert alert-info py-2 px-3 small mb-3">
+        <i class="bi bi-google me-1"></i>
+        <a href="{{ url_for('google.connect') }}">Connect your Google account</a>
+        to sync events and create meeting links.
+    </div>
+    {% endif %}
+
+    <div class="mb-3">
+        <label for="file" class="form-label">Attachment <small class="text-muted">(optional)</small></label>
+        <input type="file" class="form-control" id="file" name="file">
+    </div>
+
+    <div class="mb-3">
+        <label for="file_description" class="form-label">File Description <small class="text-muted">(optional)</small></label>
+        <input type="text" class="form-control" id="file_description" name="file_description" maxlength="200"
+               placeholder="e.g. Meeting agenda document">
+    </div>
+
+    <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-primary">
+            <i class="bi bi-check-lg me-1"></i>{{ 'Update' if interaction else 'Log' }} Interaction
+        </button>
+        {% if panel_mode %}
+            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="offcanvas">Cancel</button>
+        {% else %}
+            <a href="{{ url_for('interactions.list_interactions') }}" class="btn btn-outline-secondary">Cancel</a>
+        {% endif %}
+    </div>
+</form>

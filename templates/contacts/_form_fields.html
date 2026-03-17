@@ -1,36 +1,46 @@
-<form method="POST" enctype="multipart/form-data">
+<form method="POST">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <div class="mb-3">
-        <label for="client_id" class="form-label">Client <span class="text-danger">*</span></label>
-        <select class="form-select" id="client_id" name="client_id" required>
-            <option value="">Select a client...</option>
-            {% for cl in clients %}
-                <option value="{{ cl.id }}"
-                    {% if selected_client_id == cl.id %}selected{% endif %}>
-                    {{ cl.company_name }}
-                </option>
-            {% endfor %}
-        </select>
+
+    <div class="row">
+        <div class="col-md-6 mb-3">
+            <label for="first_name" class="form-label">First Name <span class="text-danger">*</span></label>
+            <input type="text" class="form-control" id="first_name" name="first_name"
+                   value="{{ contact.first_name if contact else '' }}" required>
+        </div>
+        <div class="col-md-6 mb-3">
+            <label for="last_name" class="form-label">Last Name</label>
+            <input type="text" class="form-control" id="last_name" name="last_name"
+                   value="{{ contact.last_name if contact else '' }}">
+        </div>
     </div>
 
     <div class="row">
-        <div class="col-md-4 mb-3">
-            <label for="date" class="form-label">Date</label>
-            <input type="date" class="form-control" id="date" name="date"
-                   value="{{ contact.date.isoformat() if contact else today }}">
+        <div class="col-md-6 mb-3">
+            <label for="email" class="form-label">Email</label>
+            <input type="email" class="form-control" id="email" name="email"
+                   value="{{ contact.email if contact else '' }}">
         </div>
-        <div class="col-md-4 mb-3">
-            <label for="time" class="form-label">Time <small class="text-muted">(optional)</small></label>
-            <input type="time" class="form-control" id="time" name="time"
-                   value="{{ contact.time.strftime('%H:%M') if contact and contact.time else '' }}">
+        <div class="col-md-6 mb-3">
+            <label for="phone" class="form-label">Phone</label>
+            <input type="tel" class="form-control" id="phone" name="phone"
+                   value="{{ contact.phone if contact else '' }}">
         </div>
-        <div class="col-md-4 mb-3">
-            <label for="contact_type" class="form-label">Type</label>
-            <select class="form-select" id="contact_type" name="contact_type">
-                {% for t in contact_types %}
-                    <option value="{{ t }}"
-                        {% if contact and contact.contact_type == t %}selected{% endif %}>
-                        {{ t|capitalize }}
+    </div>
+
+    <div class="row">
+        <div class="col-md-6 mb-3">
+            <label for="job_title" class="form-label">Job Title</label>
+            <input type="text" class="form-control" id="job_title" name="job_title"
+                   value="{{ contact.job_title if contact else '' }}">
+        </div>
+        <div class="col-md-6 mb-3">
+            <label for="company_id" class="form-label">Company</label>
+            <select class="form-select" id="company_id" name="company_id">
+                <option value="">— None —</option>
+                {% for co in companies %}
+                    <option value="{{ co.id }}"
+                        {% if contact and contact.company_id == co.id %}selected{% elif preselect_company_id is defined and preselect_company_id == co.id %}selected{% endif %}>
+                        {{ co.company_name }}
                     </option>
                 {% endfor %}
             </select>
@@ -38,71 +48,84 @@
     </div>
 
     <div class="mb-3">
-        <label for="notes" class="form-label">Notes</label>
-        <textarea class="form-control" id="notes" name="notes" rows="4">{{ contact.notes if contact else (prefill_notes or '') }}</textarea>
-    </div>
-
-    <div class="mb-3">
-        <label for="outcome" class="form-label">Outcome</label>
-        <input type="text" class="form-control" id="outcome" name="outcome"
-               value="{{ contact.outcome if contact else '' }}"
-               placeholder="e.g. Agreed to follow-up call next week">
-    </div>
-
-    {% if google_connected %}
-    <div class="card mb-3 border-info">
-        <div class="card-body py-2 px-3">
-            <div class="form-check mb-1">
-                <input class="form-check-input" type="checkbox" id="sync_to_google" name="sync_to_google"
-                       {{ 'checked' if contact and contact.calendar_sync }}>
-                <label class="form-check-label" for="sync_to_google">
-                    <i class="bi bi-calendar3 me-1 text-primary"></i>Sync to Google Calendar
-                </label>
-                <small class="text-muted d-block ms-4">Creates an event in your Google Calendar with this date and time</small>
-            </div>
-            <div class="form-check">
-                <input class="form-check-input" type="checkbox" id="create_meet" name="create_meet">
-                <label class="form-check-label" for="create_meet">
-                    <i class="bi bi-camera-video me-1 text-success"></i>Create Google Meet link
-                </label>
-                <small class="text-muted d-block ms-4">Generates a video meeting link you can share with the client</small>
-            </div>
-            {% if contact and contact.meet_link %}
-            <div class="mt-2">
-                <a href="{{ contact.meet_link }}" target="_blank" rel="noopener" class="btn btn-sm btn-outline-success">
-                    <i class="bi bi-camera-video me-1"></i>Join Meeting
-                </a>
-            </div>
-            {% endif %}
+        <div class="form-check">
+            <input class="form-check-input" type="checkbox" id="is_primary" name="is_primary"
+                   {{ 'checked' if contact and contact.is_primary }}>
+            <label class="form-check-label" for="is_primary">Primary contact for this company</label>
         </div>
     </div>
-    {% elif google_enabled %}
-    <div class="alert alert-info py-2 px-3 small mb-3">
-        <i class="bi bi-google me-1"></i>
-        <a href="{{ url_for('google.connect') }}">Connect your Google account</a>
-        to sync events and create meeting links.
-    </div>
-    {% endif %}
 
     <div class="mb-3">
-        <label for="file" class="form-label">Attachment <small class="text-muted">(optional)</small></label>
-        <input type="file" class="form-control" id="file" name="file">
+        <label for="notes" class="form-label">Notes</label>
+        <textarea class="form-control" id="notes" name="notes" rows="3">{{ contact.notes if contact else '' }}</textarea>
     </div>
 
-    <div class="mb-3">
-        <label for="file_description" class="form-label">File Description <small class="text-muted">(optional)</small></label>
-        <input type="text" class="form-control" id="file_description" name="file_description" maxlength="200"
-               placeholder="e.g. Meeting agenda document">
+    <!-- Social Accounts -->
+    <hr>
+    <h6 class="text-muted mb-3"><i class="bi bi-share me-1"></i>Social Accounts</h6>
+    <div id="socialAccountsContainer">
+        {% if contact and contact.social_accounts %}
+            {% for sa in contact.social_accounts %}
+            <div class="row mb-2 social-account-row">
+                <div class="col-md-3">
+                    <select class="form-select form-select-sm" name="social_platform_{{ loop.index0 }}">
+                        {% for p in social_platforms %}
+                        <option value="{{ p.value }}" {% if sa.platform == p.value %}selected{% endif %}>{{ p.label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <input type="text" class="form-control form-control-sm" name="social_handle_{{ loop.index0 }}"
+                           value="{{ sa.handle }}" placeholder="@handle">
+                </div>
+                <div class="col-md-5">
+                    <input type="url" class="form-control form-control-sm" name="social_url_{{ loop.index0 }}"
+                           value="{{ sa.url }}" placeholder="https://...">
+                </div>
+                <div class="col-md-1">
+                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="this.closest('.social-account-row').remove()">
+                        <i class="bi bi-x-lg"></i>
+                    </button>
+                </div>
+            </div>
+            {% endfor %}
+        {% endif %}
     </div>
+    <button type="button" class="btn btn-sm btn-outline-secondary mb-3" id="addSocialBtn">
+        <i class="bi bi-plus-lg me-1"></i>Add Social Account
+    </button>
 
     <div class="d-flex gap-2">
         <button type="submit" class="btn btn-primary">
-            <i class="bi bi-check-lg me-1"></i>{{ 'Update' if contact else 'Log' }} Interaction
+            <i class="bi bi-check-lg me-1"></i>{{ 'Update' if contact else 'Create' }} Contact
         </button>
-        {% if panel_mode %}
-            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="offcanvas">Cancel</button>
-        {% else %}
-            <a href="{{ url_for('contacts.list_contacts') }}" class="btn btn-outline-secondary">Cancel</a>
-        {% endif %}
+        <a href="{{ url_for('contacts.detail_contact', id=contact.id) if contact else url_for('contacts.list_contacts') }}"
+           class="btn btn-outline-secondary">Cancel</a>
     </div>
 </form>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var socialIdx = {{ (contact.social_accounts|length) if contact and contact.social_accounts else 0 }};
+    var platforms = {{ social_platforms|tojson }};
+
+    document.getElementById('addSocialBtn').addEventListener('click', function() {
+        var container = document.getElementById('socialAccountsContainer');
+        var row = document.createElement('div');
+        row.className = 'row mb-2 social-account-row';
+
+        var options = platforms.map(function(p) {
+            return '<option value="' + p.value + '">' + p.label + '</option>';
+        }).join('');
+
+        row.innerHTML =
+            '<div class="col-md-3"><select class="form-select form-select-sm" name="social_platform_' + socialIdx + '">' + options + '</select></div>' +
+            '<div class="col-md-3"><input type="text" class="form-control form-control-sm" name="social_handle_' + socialIdx + '" placeholder="@handle"></div>' +
+            '<div class="col-md-5"><input type="url" class="form-control form-control-sm" name="social_url_' + socialIdx + '" placeholder="https://..."></div>' +
+            '<div class="col-md-1"><button type="button" class="btn btn-sm btn-outline-danger" onclick="this.closest(\'.social-account-row\').remove()"><i class="bi bi-x-lg"></i></button></div>';
+
+        container.appendChild(row);
+        socialIdx++;
+    });
+});
+</script>

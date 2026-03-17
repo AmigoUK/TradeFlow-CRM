@@ -7,7 +7,7 @@ from collections import defaultdict
 
 from blueprints.dashboard import dashboard_bp
 from extensions import db
-from models import Client, Contact, FollowUp, InteractionType
+from models import Company, Interaction, FollowUp, InteractionType
 
 
 def _ownership_filter(query, model):
@@ -29,12 +29,12 @@ def dashboard():
     today = date.today()
 
     # Stats
-    client_q = Client.query
+    client_q = Company.query
     if not current_user.has_role_at_least("manager"):
-        client_q = client_q.filter(Client.user_id == current_user.id)
+        client_q = client_q.filter(Company.user_id == current_user.id)
 
-    active_clients = client_q.filter(Client.status == "active").count()
-    total_clients = client_q.count()
+    active_companies = client_q.filter(Company.status == "active").count()
+    total_companies = client_q.count()
 
     due_today_q = FollowUp.query.filter(
         FollowUp.due_date == today,
@@ -49,16 +49,16 @@ def dashboard():
     overdue = _ownership_filter(overdue_q, FollowUp).all()
 
     # Recent interactions (last 5)
-    recent_q = Contact.query.order_by(Contact.date.desc(), Contact.created_at.desc())
-    recent_contacts = _ownership_filter(recent_q, Contact).limit(5).all()
+    recent_q = Interaction.query.order_by(Interaction.date.desc(), Interaction.created_at.desc())
+    recent_interactions = _ownership_filter(recent_q, Interaction).limit(5).all()
 
     return render_template(
         "dashboard/index.html",
-        active_clients=active_clients,
-        total_clients=total_clients,
+        active_companies=active_companies,
+        total_companies=total_companies,
         due_today=due_today,
         overdue=overdue,
-        recent_contacts=recent_contacts,
+        recent_interactions=recent_interactions,
     )
 
 
@@ -100,14 +100,14 @@ def api_events():
             start_val = fu.due_date.isoformat()
         events.append({
             "id": f"followup-{fu.id}",
-            "title": f"{'✓ ' if fu.completed else ''}{fu.client.company_name}",
+            "title": f"{'✓ ' if fu.completed else ''}{fu.company.company_name}",
             "start": start_val,
             "backgroundColor": colour,
             "borderColor": colour,
             "textColor": text_colour,
             "extendedProps": {
                 "type": "followup",
-                "clientId": fu.client_id,
+                "companyId": fu.company_id,
                 "priority": fu.priority,
                 "completed": fu.completed,
                 "notes": fu.notes[:100] if fu.notes else "",
@@ -117,28 +117,28 @@ def api_events():
 
     # Contacts — colour by type
     type_colours = {t.label: t.colour for t in InteractionType.query.all()}
-    contacts_q = Contact.query.filter(
-        Contact.date >= start_date,
-        Contact.date <= end_date,
+    contacts_q = Interaction.query.filter(
+        Interaction.date >= start_date,
+        Interaction.date <= end_date,
     )
-    contacts = _ownership_filter(contacts_q, Contact).all()
+    contacts = _ownership_filter(contacts_q, Interaction).all()
     for c in contacts:
-        colour = type_colours.get(c.contact_type, "#0d6efd")
+        colour = type_colours.get(c.interaction_type, "#0d6efd")
         if c.time:
             start_val = f"{c.date.isoformat()}T{c.time.strftime('%H:%M:%S')}"
         else:
             start_val = c.date.isoformat()
         events.append({
             "id": f"contact-{c.id}",
-            "title": f"{c.contact_type.capitalize()}: {c.client.company_name}",
+            "title": f"{c.interaction_type.capitalize()}: {c.company.company_name}",
             "start": start_val,
             "backgroundColor": colour,
             "borderColor": colour,
             "textColor": "#fff",
             "extendedProps": {
                 "type": "contact",
-                "clientId": c.client_id,
-                "contactType": c.contact_type,
+                "companyId": c.company_id,
+                "interactionType": c.interaction_type,
                 "notes": c.notes[:100] if c.notes else "",
                 "time": c.time.strftime("%H:%M") if c.time else None,
             },
@@ -177,8 +177,8 @@ def agenda():
     ]).order_by(FollowUp.due_date).all()
 
     # Today's interactions
-    today_contacts_q = Contact.query.filter(Contact.date == today)
-    today_contacts = _ownership_filter(today_contacts_q, Contact).order_by(Contact.created_at.desc()).all()
+    today_contacts_q = Interaction.query.filter(Interaction.date == today)
+    today_interactions = _ownership_filter(today_contacts_q, Interaction).order_by(Interaction.created_at.desc()).all()
 
     # Tomorrow
     tomorrow_followups = _fq([
@@ -212,7 +212,7 @@ def agenda():
         "dashboard/agenda.html",
         overdue=overdue,
         today_followups=today_followups,
-        today_contacts=today_contacts,
+        today_interactions=today_interactions,
         tomorrow_followups=tomorrow_followups,
         this_week=this_week,
         next_week=next_week,
@@ -255,11 +255,11 @@ def api_quarterly_data():
         current_quarter = (today.month - 1) // 3 + 1
 
     # Fetch all data for the year in bulk (with ownership filter)
-    contacts_q = Contact.query.filter(
-        Contact.date >= date(year, 1, 1),
-        Contact.date <= date(year, 12, 31),
+    contacts_q = Interaction.query.filter(
+        Interaction.date >= date(year, 1, 1),
+        Interaction.date <= date(year, 12, 31),
     )
-    all_contacts = _ownership_filter(contacts_q, Contact).all()
+    all_contacts = _ownership_filter(contacts_q, Interaction).all()
 
     followups_q = FollowUp.query.filter(
         FollowUp.due_date >= date(year, 1, 1),
@@ -284,10 +284,10 @@ def api_quarterly_data():
         # Type breakdown — dynamic from DB
         type_breakdown = {t.label: 0 for t in all_interaction_types}
         for c in q_contacts:
-            if c.contact_type in type_breakdown:
-                type_breakdown[c.contact_type] += 1
+            if c.interaction_type in type_breakdown:
+                type_breakdown[c.interaction_type] += 1
             else:
-                type_breakdown[c.contact_type] = 1
+                type_breakdown[c.interaction_type] = 1
 
         # Priority breakdown
         priority_breakdown = {"high": 0, "medium": 0, "low": 0}
@@ -318,16 +318,16 @@ def api_quarterly_data():
                 "total": total,
             })
 
-        # Top clients by combined activity
+        # Top companies by combined activity
         client_activity = defaultdict(lambda: {"count": 0, "name": ""})
         for c in q_contacts:
-            client_activity[c.client_id]["count"] += 1
-            client_activity[c.client_id]["name"] = c.client.company_name
+            client_activity[c.company_id]["count"] += 1
+            client_activity[c.company_id]["name"] = c.company.company_name
         for f in q_followups:
-            client_activity[f.client_id]["count"] += 1
-            client_activity[f.client_id]["name"] = f.client.company_name
+            client_activity[f.company_id]["count"] += 1
+            client_activity[f.company_id]["name"] = f.company.company_name
 
-        top_clients = sorted(
+        top_companies = sorted(
             [{"id": cid, "name": data["name"], "count": data["count"]}
              for cid, data in client_activity.items()],
             key=lambda x: x["count"],
@@ -335,14 +335,14 @@ def api_quarterly_data():
         )[:5]
 
         quarters[str(q_num)] = {
-            "total_contacts": len(q_contacts),
+            "total_interactions": len(q_contacts),
             "total_followups": len(q_followups),
             "completed": completed,
             "pending": pending,
             "type_breakdown": type_breakdown,
             "priority_breakdown": priority_breakdown,
             "months": months_data,
-            "top_clients": top_clients,
+            "top_companies": top_companies,
         }
 
     return jsonify({

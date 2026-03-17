@@ -6,7 +6,8 @@ from datetime import date, time, timedelta
 from app import create_app
 from extensions import db
 from models import (
-    Client, Contact, FollowUp, QuickFunction, DEFAULT_QUICK_FUNCTIONS,
+    Company, COMPANY_STATUSES, Interaction, Contact, SocialAccount,
+    FollowUp, QuickFunction, DEFAULT_QUICK_FUNCTIONS,
     InteractionType, DEFAULT_INTERACTION_TYPES,
     CustomFieldDefinition, CustomFieldValue, DEFAULT_CUSTOM_FIELDS,
     AttachmentCategory, DEFAULT_ATTACHMENT_CATEGORIES,
@@ -16,10 +17,10 @@ from models import (
 )
 
 # ---------------------------------------------------------------------------
-# Curated client data
+# Curated company data
 # ---------------------------------------------------------------------------
 
-UK_CLIENTS = [
+UK_COMPANIES = [
     # First 15 preserve existing companies
     {"company_name": "Thornbury & Associates", "industry": "Legal Services", "phone": "020 7946 0123", "email": "info@thornbury.co.uk", "contact_person": "Margaret Thornbury", "status": "active"},
     {"company_name": "Brightwell Manufacturing", "industry": "Manufacturing", "phone": "0121 496 0456", "email": "sales@brightwell.co.uk", "contact_person": "David Brightwell", "status": "active"},
@@ -36,7 +37,7 @@ UK_CLIENTS = [
     {"company_name": "Longmere Education", "industry": "Education", "phone": "0113 496 0174", "email": "info@longmere-education.co.uk", "contact_person": "Catherine Longmere", "status": "prospect"},
     {"company_name": "Stonewick Retail Group", "industry": "Retail", "phone": "0151 946 0285", "email": "buyers@stonewickretail.co.uk", "contact_person": "Daniel Stonewick", "status": "lead"},
     {"company_name": "Blackwood Energy Solutions", "industry": "Energy", "phone": "0131 496 0396", "email": "projects@blackwoodenergy.co.uk", "contact_person": "Fiona Blackwood", "status": "inactive"},
-    # 15-39: additional UK clients
+    # 15-39: additional UK companies
     {"company_name": "Harrowgate Telecom", "industry": "Telecom", "phone": "0113 946 0412", "email": "info@harrowgatetelecom.co.uk", "contact_person": "George Harrowgate", "status": "active"},
     {"company_name": "Dunmore Pharma", "industry": "Pharma", "phone": "020 7946 0513", "email": "enquiries@dunmorepharma.co.uk", "contact_person": "Dr. Susan Dunmore", "status": "active"},
     {"company_name": "Crestfield Construction", "industry": "Construction", "phone": "0121 496 0624", "email": "tenders@crestfieldconstruction.co.uk", "contact_person": "Mark Crestfield", "status": "prospect"},
@@ -64,7 +65,7 @@ UK_CLIENTS = [
     {"company_name": "Prescott Shipping", "industry": "Transport & Logistics", "phone": "0151 946 0161", "email": "cargo@prescottshipping.co.uk", "contact_person": "Thomas Prescott", "status": "inactive"},
 ]
 
-US_CLIENTS = [
+US_COMPANIES = [
     {"company_name": "Pinnacle Software Inc", "industry": "Technology", "phone": "(415) 555-0123", "email": "info@pinnaclesoft.com", "contact_person": "Mike Chen", "status": "active"},
     {"company_name": "Great Lakes Manufacturing", "industry": "Manufacturing", "phone": "(312) 555-0234", "email": "sales@greatlakesmfg.com", "contact_person": "Karen O'Brien", "status": "active"},
     {"company_name": "Redwood Capital Partners", "industry": "Financial Services", "phone": "(212) 555-0345", "email": "invest@redwoodcapital.com", "contact_person": "Jonathan Reeves", "status": "prospect"},
@@ -92,7 +93,7 @@ US_CLIENTS = [
     {"company_name": "Metro Retail Holdings", "industry": "Retail", "phone": "(404) 555-0792", "email": "partnerships@metroretail.com", "contact_person": "Tamara Williams", "status": "lead"},
 ]
 
-EU_CLIENTS = [
+EU_COMPANIES = [
     {"company_name": "Müller Maschinenbau GmbH", "industry": "Manufacturing", "phone": "+49 89 555 0123", "email": "info@muller-maschinenbau.de", "contact_person": "Hans Müller", "status": "active"},
     {"company_name": "Durand et Fils SA", "industry": "Food & Beverage", "phone": "+33 1 55 55 0234", "email": "contact@durandetfils.fr", "contact_person": "Pierre Durand", "status": "prospect"},
     {"company_name": "Van der Berg Shipping BV", "industry": "Transport & Logistics", "phone": "+31 10 555 0345", "email": "logistics@vanderbergshipping.nl", "contact_person": "Jan van der Berg", "status": "active"},
@@ -120,7 +121,7 @@ EU_CLIENTS = [
     {"company_name": "Colombo Aerospace SRL", "industry": "Aerospace", "phone": "+39 011 555 0792", "email": "aviazione@colomboaerospace.it", "contact_person": "Paolo Colombo", "status": "lead"},
 ]
 
-OTHER_CLIENTS = [
+OTHER_COMPANIES = [
     {"company_name": "Southern Cross Mining", "industry": "Mining", "phone": "+61 2 5550 0123", "email": "ops@southerncrossmining.com.au", "contact_person": "Bruce Campbell", "status": "active"},
     {"company_name": "Sakura Technologies KK", "industry": "Technology", "phone": "+81 3 5550 0234", "email": "info@sakuratech.co.jp", "contact_person": "Yuki Tanaka", "status": "prospect"},
     {"company_name": "Emirates Trading LLC", "industry": "Import/Export", "phone": "+971 4 555 0345", "email": "trade@emiratestrading.ae", "contact_person": "Ahmed Al-Rashid", "status": "active"},
@@ -133,7 +134,7 @@ OTHER_CLIENTS = [
     {"company_name": "Cape Town Renewables", "industry": "Energy", "phone": "+27 21 555 0134", "email": "projects@capetownrenewables.co.za", "contact_person": "Thabo Molefe", "status": "prospect"},
 ]
 
-ALL_CLIENTS = UK_CLIENTS + US_CLIENTS + EU_CLIENTS + OTHER_CLIENTS
+ALL_COMPANIES = UK_COMPANIES + US_COMPANIES + EU_COMPANIES + OTHER_COMPANIES
 
 # Status distribution: 35 active, 25 prospect, 25 lead, 15 inactive
 STATUS_SEQUENCE = (
@@ -296,11 +297,11 @@ def _random_time():
     return time(hour, minute)
 
 
-def generate_contacts_for_client(client_obj, client_data, today):
-    """Generate contact records for a single client."""
-    status = client_data["status"]
-    person = client_data["contact_person"]
-    company = client_data["company_name"]
+def generate_interactions_for_company(company_obj, company_data, today):
+    """Generate interaction records for a single company."""
+    status = company_data["status"]
+    person = company_data["contact_person"]
+    company = company_data["company_name"]
 
     count_map = {"active": (5, 7), "prospect": (4, 6), "lead": (3, 4), "inactive": (2, 3)}
     lo, hi = count_map.get(status, (3, 4))
@@ -310,7 +311,7 @@ def generate_contacts_for_client(client_obj, client_data, today):
     start_date = date(2025, 4, 1)
     end_date = date(2026, 3, 31)
 
-    contacts = []
+    interactions = []
     for _ in range(n):
         # Type mix: ~40% email, 35% phone, 25% meeting
         r = random.random()
@@ -325,28 +326,28 @@ def generate_contacts_for_client(client_obj, client_data, today):
         notes = template["notes"].format(person=person, company=company)
         outcome = template["outcome"].format(person=person, company=company)
 
-        contact_date = _random_date_in_range(start_date, end_date)
-        contact_time = _random_time() if ctype in ("phone", "meeting") else None
+        interaction_date = _random_date_in_range(start_date, end_date)
+        interaction_time = _random_time() if ctype in ("phone", "meeting") else None
 
-        c = Contact(
-            client_id=client_obj.id,
-            user_id=client_obj.user_id,
-            date=contact_date,
-            time=contact_time,
-            contact_type=ctype,
+        c = Interaction(
+            company_id=company_obj.id,
+            user_id=company_obj.user_id,
+            date=interaction_date,
+            time=interaction_time,
+            interaction_type=ctype,
             notes=notes,
             outcome=outcome,
         )
-        contacts.append(c)
+        interactions.append(c)
 
-    return contacts
+    return interactions
 
 
-def generate_followups_for_client(client_obj, client_data, today):
-    """Generate follow-up records for a single client."""
-    status = client_data["status"]
-    person = client_data["contact_person"]
-    company = client_data["company_name"]
+def generate_followups_for_company(company_obj, company_data, today):
+    """Generate follow-up records for a single company."""
+    status = company_data["status"]
+    person = company_data["contact_person"]
+    company = company_data["company_name"]
 
     count_map = {"active": (5, 7), "prospect": (4, 6), "lead": (3, 5), "inactive": (2, 3)}
     lo, hi = count_map.get(status, (3, 4))
@@ -389,8 +390,8 @@ def generate_followups_for_client(client_obj, client_data, today):
         due_time = _random_time() if random.random() < 0.4 else None
 
         fu = FollowUp(
-            client_id=client_obj.id,
-            user_id=client_obj.user_id,
+            company_id=company_obj.id,
+            user_id=company_obj.user_id,
             due_date=due,
             due_time=due_time,
             priority=priority,
@@ -402,14 +403,14 @@ def generate_followups_for_client(client_obj, client_data, today):
     return followups
 
 
-def generate_custom_fields_for_client(client_obj, client_data, idx, custom_field_defs):
-    """Generate custom field values for a single client."""
+def generate_custom_fields_for_company(company_obj, company_data, idx, custom_field_defs):
+    """Generate custom field values for a single company."""
     values = []
     addr_def = custom_field_defs[0]     # Address
     linkedin_def = custom_field_defs[1]  # LinkedIn
     twitter_def = custom_field_defs[2]   # Twitter / X
 
-    slug = _company_slug(client_data["company_name"])
+    slug = _company_slug(company_data["company_name"])
 
     # Determine region
     if idx < 40:
@@ -432,14 +433,14 @@ def generate_custom_fields_for_client(client_obj, client_data, idx, custom_field
         else:
             addr = random.choice(OTHER_ADDRESSES)
         values.append(CustomFieldValue(
-            definition_id=addr_def.id, client_id=client_obj.id, value=addr
+            definition_id=addr_def.id, company_id=company_obj.id, value=addr
         ))
 
     # ~25% get LinkedIn
     if random.random() < 0.25:
         values.append(CustomFieldValue(
             definition_id=linkedin_def.id,
-            client_id=client_obj.id,
+            company_id=company_obj.id,
             value=f"https://linkedin.com/company/{slug}",
         ))
 
@@ -447,7 +448,7 @@ def generate_custom_fields_for_client(client_obj, client_data, idx, custom_field
     if random.random() < 0.15:
         values.append(CustomFieldValue(
             definition_id=twitter_def.id,
-            client_id=client_obj.id,
+            company_id=company_obj.id,
             value=f"https://x.com/{slug}",
         ))
 
@@ -471,8 +472,9 @@ def seed():
         CustomFieldValue.query.delete()
         CustomFieldDefinition.query.delete()
         FollowUp.query.delete()
+        Interaction.query.delete()
         Contact.query.delete()
-        Client.query.delete()
+        Company.query.delete()
         QuickFunction.query.delete()
         InteractionType.query.delete()
         User.query.delete()
@@ -526,7 +528,7 @@ def seed():
             db.session.add(QuickFunction(sort_order=i, **qf_data))
         db.session.flush()
 
-        # --- Clients (100 total) ---
+        # --- Companies (100 total) ---
         # User assignment: admin=30, manager1=30, user1=25, user2=15
         user_assignment = (
             [users[0]] * 30 + [users[1]] * 30 + [users[2]] * 25 + [users[3]] * 15
@@ -537,17 +539,17 @@ def seed():
         random.shuffle(statuses)
 
         today = date.today()
-        clients = []
-        all_contacts = []
+        companies = []
+        all_interactions = []
         all_followups = []
         all_custom_values = []
 
-        for idx, client_data in enumerate(ALL_CLIENTS):
+        for idx, company_data in enumerate(ALL_COMPANIES):
             # Override status with balanced distribution
-            data = dict(client_data)
+            data = dict(company_data)
             data["status"] = statuses[idx]
 
-            client = Client(
+            company = Company(
                 company_name=data["company_name"],
                 industry=data["industry"],
                 phone=data["phone"],
@@ -556,30 +558,51 @@ def seed():
                 status=data["status"],
                 user_id=user_assignment[idx].id,
             )
-            db.session.add(client)
+            db.session.add(company)
             db.session.flush()
-            clients.append(client)
+            companies.append(company)
 
-            # Generate contacts
-            contacts = generate_contacts_for_client(client, data, today)
-            all_contacts.extend(contacts)
+            # Generate interactions
+            interactions = generate_interactions_for_company(company, data, today)
+            all_interactions.extend(interactions)
 
             # Generate follow-ups
-            followups = generate_followups_for_client(client, data, today)
+            followups = generate_followups_for_company(company, data, today)
             all_followups.extend(followups)
 
             # Generate custom field values
-            custom_values = generate_custom_fields_for_client(client, data, idx, custom_field_defs)
+            custom_values = generate_custom_fields_for_company(company, data, idx, custom_field_defs)
             all_custom_values.extend(custom_values)
 
-        db.session.add_all(all_contacts)
+        db.session.add_all(all_interactions)
         db.session.add_all(all_followups)
         db.session.add_all(all_custom_values)
-
         db.session.commit()
+
+        # ── Create Contact (person) records from contact_person data ──
+        companies = Company.query.all()
+        for company in companies:
+            if company.contact_person:
+                parts = company.contact_person.strip().split(" ", 1)
+                first_name = parts[0]
+                last_name = parts[1] if len(parts) > 1 else ""
+                contact = Contact(
+                    first_name=first_name,
+                    last_name=last_name,
+                    email=company.email,
+                    phone=company.phone,
+                    company_id=company.id,
+                    is_primary=True,
+                    user_id=company.user_id,
+                )
+                db.session.add(contact)
+        db.session.commit()
+
+        contact_count = Contact.query.count()
         print(
-            f"Seeded {len(users)} users, {len(clients)} clients, "
-            f"{len(all_contacts)} contacts, {len(all_followups)} follow-ups, "
+            f"Seeded {len(users)} users, {len(companies)} companies, "
+            f"{len(all_interactions)} interactions, {len(all_followups)} follow-ups, "
+            f"{contact_count} contacts, "
             f"{len(all_custom_values)} custom field values, "
             f"{len(attachment_cats)} attachment categories, "
             f"{len(attachment_tags)} attachment tags."

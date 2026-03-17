@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+
+{% block title %}{{ 'Edit' if interaction else 'Log' }} Interaction — NextStep CRM{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{{ url_for('interactions.list_interactions') }}">Interactions</a></li>
+        <li class="breadcrumb-item active">{{ 'Edit' if interaction else 'Log' }}</li>
+    </ol>
+</nav>
+
+<h1>{{ 'Edit' if interaction else 'Log' }} Interaction</h1>
+
+<div class="row">
+    <div class="col-lg-8">
+        {% include "interactions/_form_fields.html" %}
+    </div>
+</div>
+{% endblock %}

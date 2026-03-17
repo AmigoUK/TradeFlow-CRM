@@ -642,11 +642,11 @@
             <div class="col-md-4">
                 <h6 class="fw-semibold mb-2"><i class="bi bi-download me-1"></i>Export</h6>
                 <div class="d-grid gap-2">
-                    <a href="{{ url_for('data_io.export_clients') }}" class="btn btn-outline-primary btn-sm">
-                        <i class="bi bi-building me-1"></i>Export Clients
+                    <a href="{{ url_for('data_io.export_companies') }}" class="btn btn-outline-primary btn-sm">
+                        <i class="bi bi-building me-1"></i>Export Companies
                     </a>
-                    <a href="{{ url_for('data_io.export_contacts') }}" class="btn btn-outline-primary btn-sm">
-                        <i class="bi bi-chat-dots me-1"></i>Export Contacts
+                    <a href="{{ url_for('data_io.export_interactions') }}" class="btn btn-outline-primary btn-sm">
+                        <i class="bi bi-chat-dots me-1"></i>Export Interactions
                     </a>
                     <a href="{{ url_for('data_io.export_followups') }}" class="btn btn-outline-primary btn-sm">
                         <i class="bi bi-calendar-check me-1"></i>Export Follow-ups
@@ -656,11 +656,11 @@
             <div class="col-md-4">
                 <h6 class="fw-semibold mb-2"><i class="bi bi-file-earmark-text me-1"></i>Templates</h6>
                 <div class="d-grid gap-2">
-                    <a href="{{ url_for('data_io.download_template', entity='clients') }}" class="btn btn-outline-secondary btn-sm">
-                        <i class="bi bi-building me-1"></i>Clients Template
+                    <a href="{{ url_for('data_io.download_template', entity='companies') }}" class="btn btn-outline-secondary btn-sm">
+                        <i class="bi bi-building me-1"></i>Companies Template
                     </a>
-                    <a href="{{ url_for('data_io.download_template', entity='contacts') }}" class="btn btn-outline-secondary btn-sm">
-                        <i class="bi bi-chat-dots me-1"></i>Contacts Template
+                    <a href="{{ url_for('data_io.download_template', entity='interactions') }}" class="btn btn-outline-secondary btn-sm">
+                        <i class="bi bi-chat-dots me-1"></i>Interactions Template
                     </a>
                     <a href="{{ url_for('data_io.download_template', entity='followups') }}" class="btn btn-outline-secondary btn-sm">
                         <i class="bi bi-calendar-check me-1"></i>Follow-ups Template

@@ -1,0 +1,213 @@
+{% extends "base.html" %}
+
+{% block title %}Companies — NextStep CRM{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Companies</h1>
+    <a href="{{ url_for('companies.create_company') }}" class="btn btn-primary">
+        <i class="bi bi-plus-lg me-1"></i>Add Company
+    </a>
+</div>
+
+<!-- Search, Filter, and View Toggle -->
+<form method="GET" class="row g-3 mb-4">
+    <div class="col-md-5">
+        <div class="input-group">
+            <span class="input-group-text"><i class="bi bi-search"></i></span>
+            <input type="text" name="q" class="form-control" placeholder="Search by company name..."
+                   value="{{ q }}">
+        </div>
+    </div>
+    <div class="col-md-3">
+        <select name="status" class="form-select">
+            <option value="">All Statuses</option>
+            {% for s in statuses %}
+                <option value="{{ s }}" {% if status == s %}selected{% endif %}>
+                    {{ s|capitalize }}
+                </option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="col-md-2">
+        <input type="hidden" name="view" value="{{ view }}">
+        <button type="submit" class="btn btn-outline-primary w-100">Filter</button>
+    </div>
+    <div class="col-md-2">
+        <div class="btn-group w-100" role="group">
+            <a href="{{ url_for('companies.list_companies', q=q, status=status, view='table') }}"
+               class="btn btn-outline-secondary {% if view != 'board' %}active{% endif %}" title="Table view">
+                <i class="bi bi-table"></i>
+            </a>
+            <a href="{{ url_for('companies.list_companies', q=q, status=status, view='board') }}"
+               class="btn btn-outline-secondary {% if view == 'board' %}active{% endif %}" title="Board view">
+                <i class="bi bi-kanban"></i>
+            </a>
+        </div>
+    </div>
+</form>
+
+{% if view == 'board' %}
+<!-- Kanban Board View -->
+<div class="row">
+    {% for s in statuses %}
+    <div class="col-md-3 mb-4">
+        <div class="card kanban-column">
+            <div class="card-header kanban-header-{{ s }} d-flex justify-content-between align-items-center">
+                <strong>{{ s|capitalize }}</strong>
+                <span class="badge bg-white text-dark kanban-count">{{ companies|selectattr('status', 'equalto', s)|list|length }}</span>
+            </div>
+            <div class="card-body p-2 kanban-items" data-status="{{ s }}">
+                {% for company in companies if company.status == s %}
+                <div class="kanban-card" data-company-id="{{ company.id }}">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <a href="{{ url_for('companies.detail_company', id=company.id) }}" class="text-decoration-none fw-semibold">
+                            {{ company.company_name }}
+                        </a>
+                        <div class="dropdown">
+                            <button class="btn btn-sm btn-link text-warning p-0 ms-1" type="button" data-bs-toggle="dropdown" title="Quick Functions">
+                                <i class="bi bi-lightning-charge"></i>
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                                {% for qf in quick_functions %}
+                                <li>
+                                    <a class="dropdown-item btn-quick-function" href="#"
+                                       data-action-id="{{ qf.id }}"
+                                       data-action-label="{{ qf.label }}"
+                                       data-action-type="{{ qf.contact_type }}"
+                                       data-action-notes="{{ qf.notes }}"
+                                       data-company-id="{{ company.id }}"
+                                       data-company-name="{{ company.company_name }}"
+                                       data-action-url="{{ url_for('companies.quick_action', id=company.id) }}">
+                                        <i class="bi {{ qf.icon }} me-2"></i>{{ qf.label }}
+                                    </a>
+                                </li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    </div>
+                    {% if company.contact_person %}
+                        <small class="text-muted">{{ company.contact_person }}</small><br>
+                    {% endif %}
+                    {% if company.industry %}
+                        <small class="text-muted"><i class="bi bi-briefcase me-1"></i>{{ company.industry }}</small><br>
+                    {% endif %}
+                    {% if company.next_followup %}
+                        <small class="text-primary"><i class="bi bi-calendar-check me-1"></i>{{ company.next_followup|relative_date }}</small>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<!-- Table View -->
+{% if companies %}
+{% if current_user.has_role_at_least("manager") %}
+<div id="bulkToolbar" class="alert alert-secondary d-flex align-items-center gap-3 mb-3" style="display: none !important;">
+    <span><strong id="bulkCount">0</strong> selected</span>
+    <select id="bulkReassignUser" class="form-select form-select-sm" style="width: auto; min-width: 160px;">
+        <option value="">Reassign to...</option>
+        {% for u in all_users if u.is_active_user %}
+        <option value="{{ u.id }}">{{ u.display_name }}</option>
+        {% endfor %}
+    </select>
+    <button id="bulkReassignBtn" class="btn btn-sm btn-primary" data-url="{{ url_for('companies.bulk_reassign') }}">
+        <i class="bi bi-arrow-left-right me-1"></i>Reassign
+    </button>
+</div>
+{% endif %}
+<div class="table-responsive">
+    <table class="table table-hover align-middle">
+        <thead class="table-light">
+            <tr>
+                {% if current_user.has_role_at_least("manager") %}
+                <th style="width: 2rem;"><input type="checkbox" class="form-check-input" id="bulkSelectAll"></th>
+                {% endif %}
+                <th>Company</th>
+                <th>Contact Person</th>
+                <th>Industry</th>
+                <th>Status</th>
+                <th>Last Interaction</th>
+                <th>Next Follow-up</th>
+                {% if current_user.has_role_at_least("manager") %}<th>Owner</th>{% endif %}
+                <th class="text-end">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for company in companies %}
+            <tr>
+                {% if current_user.has_role_at_least("manager") %}
+                <td><input type="checkbox" class="form-check-input bulk-select-cb" value="{{ company.id }}"></td>
+                {% endif %}
+                <td data-label="Company">
+                    <a href="{{ url_for('companies.detail_company', id=company.id) }}" class="text-decoration-none fw-semibold">
+                        {{ company.company_name }}
+                    </a>
+                </td>
+                <td data-label="Contact Person">{{ company.contact_person or '—' }}</td>
+                <td data-label="Industry">{{ company.industry or '—' }}</td>
+                <td data-label="Status">
+                    <span class="badge badge-{{ company.status }}">{{ company.status|capitalize }}</span>
+                </td>
+                <td data-label="Last Interaction">{{ company.last_interaction|relative_date if company.last_interaction else '—' }}</td>
+                <td data-label="Next Follow-up">{{ company.next_followup|relative_date if company.next_followup else '—' }}</td>
+                {% if current_user.has_role_at_least("manager") %}
+                <td data-label="Owner">{{ company.owner.display_name if company.owner else '—' }}</td>
+                {% endif %}
+                <td data-label="Actions" class="text-end">
+                    <div class="dropdown d-inline">
+                        <button class="btn btn-sm btn-outline-warning dropdown-toggle" type="button" data-bs-toggle="dropdown" title="Quick Functions">
+                            <i class="bi bi-lightning-charge"></i>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            {% for qf in quick_functions %}
+                            <li>
+                                <a class="dropdown-item btn-quick-function" href="#"
+                                   data-action-id="{{ qf.id }}"
+                                   data-action-label="{{ qf.label }}"
+                                   data-action-type="{{ qf.contact_type }}"
+                                   data-action-notes="{{ qf.notes }}"
+                                   data-company-id="{{ company.id }}"
+                                   data-company-name="{{ company.company_name }}"
+                                   data-action-url="{{ url_for('companies.quick_action', id=company.id) }}">
+                                    <i class="bi {{ qf.icon }} me-2"></i>{{ qf.label }}
+                                </a>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    <a href="{{ url_for('companies.edit_company', id=company.id) }}" class="btn btn-sm btn-outline-secondary">
+                        <i class="bi bi-pencil"></i>
+                    </a>
+                    <button type="button" class="btn btn-sm btn-outline-danger"
+                            data-bs-toggle="modal" data-bs-target="#confirmDeleteModal"
+                            data-item-name="{{ company.company_name }}"
+                            data-delete-url="{{ url_for('companies.delete_company', id=company.id) }}">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% include "partials/_pagination.html" %}
+{% else %}
+<div class="empty-state">
+    <i class="bi bi-building d-block"></i>
+    <h5>No companies found</h5>
+    <p>{% if q or status %}Try adjusting your search or filters.{% else %}Get started by adding your first company. <a href="{{ url_for('companies.create_company') }}">Add one now</a>{% endif %}</p>
+</div>
+{% endif %}
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+{% if view == 'board' %}
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js"></script>
+<script src="{{ url_for('static', filename='js/kanban.js') }}"></script>
+{% endif %}
+{% endblock %}

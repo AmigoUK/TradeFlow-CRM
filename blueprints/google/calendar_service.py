@@ -43,7 +43,7 @@ def sync_followup_to_calendar(followup, user_id):
     if not service:
         return None
 
-    title = followup.client.company_name
+    title = followup.company.company_name
     description = followup.notes or ""
     body = _build_event_body(
         title, description, followup.due_date,
@@ -87,23 +87,23 @@ def sync_followup_to_calendar(followup, user_id):
         return None
 
 
-def sync_contact_to_calendar(contact, user_id):
-    """Create or update a Google Calendar event for a contact."""
+def sync_interaction_to_calendar(interaction, user_id):
+    """Create or update a Google Calendar event for an interaction."""
     from models.google_calendar_sync import GoogleCalendarSync
 
     service = build_service("calendar", "v3", user_id=user_id)
     if not service:
         return None
 
-    title = f"{contact.contact_type.capitalize()}: {contact.client.company_name}"
-    description = contact.notes or ""
-    if contact.outcome:
-        description += f"\nOutcome: {contact.outcome}"
-    body = _build_event_body(title, description, contact.date, contact.time)
+    title = f"{interaction.interaction_type.capitalize()}: {interaction.company.company_name}"
+    description = interaction.notes or ""
+    if interaction.outcome:
+        description += f"\nOutcome: {interaction.outcome}"
+    body = _build_event_body(title, description, interaction.date, interaction.time)
 
     try:
         sync = GoogleCalendarSync.query.filter_by(
-            contact_id=contact.id, user_id=user_id
+            interaction_id=interaction.id, user_id=user_id
         ).first()
 
         if sync:
@@ -121,7 +121,7 @@ def sync_contact_to_calendar(contact, user_id):
             ).execute()
             sync = GoogleCalendarSync(
                 user_id=user_id,
-                contact_id=contact.id,
+                interaction_id=interaction.id,
                 google_event_id=event["id"],
                 google_calendar_id="primary",
                 sync_direction="outbound",
@@ -132,7 +132,7 @@ def sync_contact_to_calendar(contact, user_id):
         db.session.commit()
         return sync
     except Exception as e:
-        logger.error("Failed to sync contact %s to calendar: %s", contact.id, e)
+        logger.error("Failed to sync interaction %s to calendar: %s", interaction.id, e)
         return None
 
 

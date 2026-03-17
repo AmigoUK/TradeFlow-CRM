@@ -86,7 +86,7 @@ document.addEventListener("DOMContentLoaded", function () {
         if (!modal) return;
 
         document.getElementById("qfActionLabel").textContent = btn.getAttribute("data-action-label");
-        document.getElementById("qfClientName").textContent = btn.getAttribute("data-client-name");
+        document.getElementById("qfClientName").textContent = btn.getAttribute("data-company-name");
         document.getElementById("qfType").textContent = btn.getAttribute("data-action-type");
         document.getElementById("qfNotes").textContent = btn.getAttribute("data-action-notes");
         document.getElementById("qfDate").textContent = new Date().toLocaleDateString("en-GB");
@@ -242,7 +242,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
             /* Populate and show outcome modal */
             var modal = document.getElementById("completeOutcomeModal");
-            document.getElementById("outcomeClientName").textContent = data.clientName;
+            document.getElementById("outcomeClientName").textContent = data.companyName;
             var notesPreview = document.getElementById("outcomeNotesPreview");
             var notesText = document.getElementById("outcomeNotesText");
             if (data.notes) {
@@ -254,7 +254,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
             /* Build "Log Interaction" URL with pre-fill */
             var today = new Date().toISOString().split("T")[0];
-            var logUrl = "/contacts/new?client_id=" + data.clientId +
+            var logUrl = "/interactions/new?company_id=" + data.companyId +
                          "&notes=" + encodeURIComponent("Follow-up: " + data.notes.substring(0, 200)) +
                          "&date=" + today;
             document.getElementById("outcomeLogInteraction").href = logUrl;
@@ -282,4 +282,9 @@ document.addEventListener("DOMContentLoaded", function () {
             navigatingAway = true;
         });
     }
+
+    /* Initialize all Bootstrap tooltips */
+    document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function(el) {
+        new bootstrap.Tooltip(el);
+    });
 });

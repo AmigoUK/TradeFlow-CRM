@@ -19,8 +19,8 @@ def create_doc():
     """Create a Google Doc (blank or from template) and link to a CRM record."""
     title = request.form.get("doc_title", "").strip() or "Untitled Document"
     template_id = request.form.get("template_id", "").strip()
-    client_id = request.form.get("client_id")
-    contact_id = request.form.get("contact_id")
+    company_id = request.form.get("company_id")
+    interaction_id = request.form.get("interaction_id")
     followup_id = request.form.get("followup_id")
 
     if template_id:
@@ -44,8 +44,8 @@ def create_doc():
         title=title,
         google_url=url,
         doc_type="document",
-        client_id=int(client_id) if client_id else None,
-        contact_id=int(contact_id) if contact_id else None,
+        company_id=int(company_id) if company_id else None,
+        interaction_id=int(interaction_id) if interaction_id else None,
         followup_id=int(followup_id) if followup_id else None,
         created_by_user_id=current_user.id,
     )
@@ -53,8 +53,8 @@ def create_doc():
     db.session.commit()
 
     flash(f"Google Doc '{title}' created.", "success")
-    if client_id:
-        return redirect(url_for("clients.detail_client", id=int(client_id)))
+    if company_id:
+        return redirect(url_for("companies.detail_company", id=int(company_id)))
     return redirect(request.referrer or url_for("dashboard.dashboard"))
 
 
@@ -67,8 +67,8 @@ def link_doc():
     title = request.form.get("doc_title", "").strip() or "Linked Document"
     google_url = request.form.get("google_url", "").strip()
     doc_type = request.form.get("doc_type", "document")
-    client_id = request.form.get("client_id")
-    contact_id = request.form.get("contact_id")
+    company_id = request.form.get("company_id")
+    interaction_id = request.form.get("interaction_id")
     followup_id = request.form.get("followup_id")
 
     if not google_doc_id:
@@ -83,8 +83,8 @@ def link_doc():
         title=title,
         google_url=google_url,
         doc_type=doc_type,
-        client_id=int(client_id) if client_id else None,
-        contact_id=int(contact_id) if contact_id else None,
+        company_id=int(company_id) if company_id else None,
+        interaction_id=int(interaction_id) if interaction_id else None,
         followup_id=int(followup_id) if followup_id else None,
         created_by_user_id=current_user.id,
     )
@@ -92,8 +92,8 @@ def link_doc():
     db.session.commit()
 
     flash(f"Document '{title}' linked.", "success")
-    if client_id:
-        return redirect(url_for("clients.detail_client", id=int(client_id)))
+    if company_id:
+        return redirect(url_for("companies.detail_company", id=int(company_id)))
     return redirect(request.referrer or url_for("dashboard.dashboard"))
 
 
@@ -102,14 +102,14 @@ def link_doc():
 def unlink_doc(id):
     """Remove a Google Doc link from CRM (does not delete the doc in Google)."""
     doc = db.get_or_404(GoogleDoc, id)
-    client_id = doc.client_id
+    company_id = doc.company_id
     title = doc.title
     db.session.delete(doc)
     db.session.commit()
 
     flash(f"Document '{title}' unlinked.", "success")
-    if client_id:
-        return redirect(url_for("clients.detail_client", id=client_id))
+    if company_id:
+        return redirect(url_for("companies.detail_company", id=company_id))
     return redirect(request.referrer or url_for("dashboard.dashboard"))
 
 

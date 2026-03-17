@@ -11,13 +11,13 @@ document.addEventListener("DOMContentLoaded", function () {
             dragClass: "kanban-drag",
             onEnd: function (evt) {
                 var card = evt.item;
-                var clientId = card.getAttribute("data-client-id");
+                var companyId = card.getAttribute("data-company-id");
                 var newStatus = evt.to.getAttribute("data-status");
                 var oldStatus = evt.from.getAttribute("data-status");
 
                 if (newStatus === oldStatus) return;
 
-                fetch("/clients/" + clientId + "/status", {
+                fetch("/companies/" + companyId + "/status", {
                     method: "PATCH",
                     headers: {
                         "Content-Type": "application/json",

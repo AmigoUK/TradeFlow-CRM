@@ -253,21 +253,21 @@ document.addEventListener("DOMContentLoaded", function () {
             body.appendChild(noType);
         }
 
-        /* Top clients */
-        if (qd.top_clients.length > 0) {
-            var clientsLabel = document.createElement("small");
-            clientsLabel.className = "text-muted fw-semibold d-block mt-3 mb-2";
-            clientsLabel.textContent = "Top Clients";
-            body.appendChild(clientsLabel);
+        /* Top companies */
+        if (qd.top_companies.length > 0) {
+            var companiesLabel = document.createElement("small");
+            companiesLabel.className = "text-muted fw-semibold d-block mt-3 mb-2";
+            companiesLabel.textContent = "Top Companies";
+            body.appendChild(companiesLabel);
 
-            var clientList = document.createElement("div");
-            for (var c = 0; c < qd.top_clients.length; c++) {
-                var cl = qd.top_clients[c];
+            var companyList = document.createElement("div");
+            for (var c = 0; c < qd.top_companies.length; c++) {
+                var cl = qd.top_companies[c];
                 var row = document.createElement("div");
                 row.className = "d-flex justify-content-between align-items-center quarter-client-row py-1";
 
                 var link = document.createElement("a");
-                link.href = "/clients/" + cl.id;
+                link.href = "/companies/" + cl.id;
                 link.className = "text-decoration-none";
                 link.textContent = cl.name;
                 row.appendChild(link);
@@ -277,9 +277,9 @@ document.addEventListener("DOMContentLoaded", function () {
                 countBadge.textContent = cl.count;
                 row.appendChild(countBadge);
 
-                clientList.appendChild(row);
+                companyList.appendChild(row);
             }
-            body.appendChild(clientList);
+            body.appendChild(companyList);
         }
 
         card.appendChild(body);

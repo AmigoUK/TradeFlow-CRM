@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+
+{% block title %}{{ contact.full_name }} — NextStep CRM{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{{ url_for('contacts.list_contacts') }}">Contacts</a></li>
+        <li class="breadcrumb-item active">{{ contact.full_name }}</li>
+    </ol>
+</nav>
+
+<div class="row">
+    <!-- Left Column — Contact Profile -->
+    <div class="col-lg-4 mb-4">
+        <div class="card mb-3">
+            <div class="card-body">
+                <h4 class="mb-1">{{ contact.full_name }}</h4>
+                {% if contact.is_primary %}<span class="badge bg-primary">Primary Contact</span>{% endif %}
+
+                <hr>
+
+                {% if contact.job_title %}
+                <p class="mb-2"><i class="bi bi-briefcase me-2 text-muted"></i><strong>Title:</strong> {{ contact.job_title }}</p>
+                {% endif %}
+                {% if contact.company %}
+                <p class="mb-2"><i class="bi bi-building me-2 text-muted"></i><strong>Company:</strong>
+                    <a href="{{ url_for('companies.detail_company', id=contact.company_id) }}">{{ contact.company.company_name }}</a>
+                </p>
+                {% endif %}
+                {% if contact.previous_company %}
+                <p class="mb-2"><i class="bi bi-arrow-left me-2 text-muted"></i><strong>Previous:</strong>
+                    <a href="{{ url_for('companies.detail_company', id=contact.previous_company_id) }}">{{ contact.previous_company.company_name }}</a>
+                </p>
+                {% endif %}
+                {% if contact.email %}
+                <p class="mb-2"><i class="bi bi-envelope me-2 text-muted"></i><strong>Email:</strong> {{ contact.email|mailto_link }}</p>
+                {% endif %}
+                {% if contact.phone %}
+                <p class="mb-2"><i class="bi bi-telephone me-2 text-muted"></i><strong>Phone:</strong> {{ contact.phone|tel_link }}</p>
+                {% endif %}
+
+                {% if contact.social_accounts %}
+                <hr>
+                <h6 class="text-muted mb-2"><i class="bi bi-share me-1"></i>Social</h6>
+                {% for sa in contact.social_accounts %}
+                <p class="mb-1">
+                    <i class="bi {{ sa.icon }} me-2 text-muted"></i>
+                    {% if sa.url %}
+                    <a href="{{ sa.url }}" target="_blank" rel="noopener">{{ sa.handle or sa.url }} <i class="bi bi-box-arrow-up-right" style="font-size: 0.7rem;"></i></a>
+                    {% else %}
+                    {{ sa.handle }}
+                    {% endif %}
+                </p>
+                {% endfor %}
+                {% endif %}
+
+                {% if contact.notes %}
+                <hr>
+                <h6 class="text-muted mb-2"><i class="bi bi-sticky me-1"></i>Notes</h6>
+                <p class="mb-0">{{ contact.notes }}</p>
+                {% endif %}
+
+                <hr>
+
+                <div class="d-flex gap-2">
+                    <a href="{{ url_for('contacts.edit_contact', id=contact.id) }}" class="btn btn-outline-primary btn-sm flex-fill">
+                        <i class="bi bi-pencil me-1"></i>Edit
+                    </a>
+                    <button type="button" class="btn btn-outline-danger btn-sm flex-fill"
+                            data-bs-toggle="modal" data-bs-target="#confirmDeleteModal"
+                            data-item-name="{{ contact.full_name }}"
+                            data-delete-url="{{ url_for('contacts.delete_contact', id=contact.id) }}">
+                        <i class="bi bi-trash me-1"></i>Delete
+                    </button>
+                </div>
+
+                {% if contact.company %}
+                <hr>
+                <h6 class="text-muted mb-2"><i class="bi bi-arrow-left-right me-1"></i>Move Company</h6>
+                <form method="POST" action="{{ url_for('contacts.move_company', id=contact.id) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="input-group input-group-sm">
+                        <select class="form-select" name="new_company_id" required>
+                            <option value="">Move to...</option>
+                            {% for co in contact.company.query.order_by('company_name').all() if co.id != contact.company_id %}
+                            <option value="{{ co.id }}">{{ co.company_name }}</option>
+                            {% endfor %}
+                        </select>
+                        <button type="submit" class="btn btn-outline-primary">Move</button>
+                    </div>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Right Column — Interaction History -->
+    <div class="col-lg-8">
+        <h5 class="mb-3"><i class="bi bi-clock-history me-1"></i>Interaction History</h5>
+
+        {% if interactions %}
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Date</th>
+                        <th>Company</th>
+                        <th>Type</th>
+                        <th>Notes</th>
+                        <th>Outcome</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for i in interactions %}
+                    <tr>
+                        <td>{{ i.date|relative_date }}</td>
+                        <td>
+                            <a href="{{ url_for('companies.detail_company', id=i.company_id) }}">{{ i.company.company_name }}</a>
+                        </td>
+                        <td><span class="badge" style="background-color: {{ interaction_types_map.get(i.interaction_type, {}).colour|default('#6c757d') }}">{{ i.interaction_type|capitalize }}</span></td>
+                        <td>{{ i.notes[:80] }}{% if i.notes|length > 80 %}...{% endif %}</td>
+                        <td>{{ i.outcome or '—' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <i class="bi bi-clock-history d-block"></i>
+            <h5>No interactions yet</h5>
+            <p>This contact has no interaction history.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

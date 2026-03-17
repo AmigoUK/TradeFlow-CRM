@@ -1,6 +1,6 @@
 """Tests for role-based access control — role gates, ownership, record access."""
 
-from tests.conftest import login_as, make_client, make_contact, make_followup
+from tests.conftest import login_as, make_company, make_interaction, make_followup
 
 
 # ── Role gates ──────────────────────────────────────────────────
@@ -42,21 +42,21 @@ class TestRoleGates:
 
 
 class TestOwnershipFiltering:
-    def test_user_sees_only_own_clients(self, client, regular_user, other_user):
+    def test_user_sees_only_own_companies(self, client, regular_user, other_user):
         login_as(client, regular_user)
-        make_client(regular_user, company_name="My Corp")
-        make_client(other_user, company_name="Other Corp")
+        make_company(regular_user, company_name="My Corp")
+        make_company(other_user, company_name="Other Corp")
 
-        resp = client.get("/clients/")
+        resp = client.get("/companies/")
         assert b"My Corp" in resp.data
         assert b"Other Corp" not in resp.data
 
-    def test_manager_sees_all_clients(self, client, manager_user, regular_user):
+    def test_manager_sees_all_companies(self, client, manager_user, regular_user):
         login_as(client, manager_user)
-        make_client(regular_user, company_name="User Corp")
-        make_client(manager_user, company_name="Mgr Corp")
+        make_company(regular_user, company_name="User Corp")
+        make_company(manager_user, company_name="Mgr Corp")
 
-        resp = client.get("/clients/")
+        resp = client.get("/companies/")
         assert b"User Corp" in resp.data
         assert b"Mgr Corp" in resp.data
 
@@ -65,22 +65,22 @@ class TestOwnershipFiltering:
 
 
 class TestRecordAccess:
-    def test_user_can_access_own_client(self, client, regular_user):
+    def test_user_can_access_own_company(self, client, regular_user):
         login_as(client, regular_user)
-        c = make_client(regular_user, company_name="Mine")
-        resp = client.get(f"/clients/{c.id}")
+        c = make_company(regular_user, company_name="Mine")
+        resp = client.get(f"/companies/{c.id}")
         assert resp.status_code == 200
 
-    def test_user_cannot_access_other_client(self, client, regular_user, other_user):
+    def test_user_cannot_access_other_company(self, client, regular_user, other_user):
         login_as(client, regular_user)
-        c = make_client(other_user, company_name="Not Mine")
-        resp = client.get(f"/clients/{c.id}")
+        c = make_company(other_user, company_name="Not Mine")
+        resp = client.get(f"/companies/{c.id}")
         assert resp.status_code == 403
 
-    def test_manager_can_access_any_client(self, client, manager_user, regular_user):
+    def test_manager_can_access_any_company(self, client, manager_user, regular_user):
         login_as(client, manager_user)
-        c = make_client(regular_user, company_name="User's Corp")
-        resp = client.get(f"/clients/{c.id}")
+        c = make_company(regular_user, company_name="User's Corp")
+        resp = client.get(f"/companies/{c.id}")
         assert resp.status_code == 200
 
 
@@ -88,19 +88,19 @@ class TestRecordAccess:
 
 
 class TestEditDeleteAccess:
-    def test_user_cannot_edit_other_client(self, client, regular_user, other_user):
+    def test_user_cannot_edit_other_company(self, client, regular_user, other_user):
         login_as(client, regular_user)
-        c = make_client(other_user, company_name="Foreign Corp")
+        c = make_company(other_user, company_name="Foreign Corp")
         resp = client.post(
-            f"/clients/{c.id}/edit",
+            f"/companies/{c.id}/edit",
             data={"company_name": "Hacked Corp", "status": "active"},
         )
         assert resp.status_code == 403
 
-    def test_user_cannot_delete_other_client(self, client, regular_user, other_user):
+    def test_user_cannot_delete_other_company(self, client, regular_user, other_user):
         login_as(client, regular_user)
-        c = make_client(other_user, company_name="Victim Corp")
-        resp = client.post(f"/clients/{c.id}/delete")
+        c = make_company(other_user, company_name="Victim Corp")
+        resp = client.post(f"/companies/{c.id}/delete")
         assert resp.status_code == 403
 
 
@@ -110,18 +110,18 @@ class TestEditDeleteAccess:
 class TestReassignment:
     def test_user_cannot_reassign(self, client, regular_user, other_user):
         login_as(client, regular_user)
-        c = make_client(regular_user, company_name="My Biz")
+        c = make_company(regular_user, company_name="My Biz")
         resp = client.post(
-            f"/clients/{c.id}/reassign",
+            f"/companies/{c.id}/reassign",
             json={"target_user_id": other_user.id},
         )
         assert resp.status_code == 403
 
     def test_manager_can_reassign(self, client, manager_user, regular_user):
         login_as(client, manager_user)
-        c = make_client(manager_user, company_name="Reassign Corp")
+        c = make_company(manager_user, company_name="Reassign Corp")
         resp = client.post(
-            f"/clients/{c.id}/reassign",
+            f"/companies/{c.id}/reassign",
             json={"target_user_id": regular_user.id},
         )
         assert resp.status_code == 200
@@ -130,18 +130,18 @@ class TestReassignment:
 
     def test_user_cannot_bulk_reassign(self, client, regular_user, other_user):
         login_as(client, regular_user)
-        c = make_client(regular_user, company_name="Bulk Corp")
+        c = make_company(regular_user, company_name="Bulk Corp")
         resp = client.post(
-            "/clients/bulk-reassign",
+            "/companies/bulk-reassign",
             json={"ids": [c.id], "target_user_id": other_user.id},
         )
         assert resp.status_code == 403
 
     def test_manager_can_bulk_reassign(self, client, manager_user, regular_user):
         login_as(client, manager_user)
-        c = make_client(manager_user, company_name="Bulk2 Corp")
+        c = make_company(manager_user, company_name="Bulk2 Corp")
         resp = client.post(
-            "/clients/bulk-reassign",
+            "/companies/bulk-reassign",
             json={"ids": [c.id], "target_user_id": regular_user.id},
         )
         assert resp.status_code == 200
@@ -150,7 +150,7 @@ class TestReassignment:
 
     def test_user_cannot_reassign_followup(self, client, regular_user, other_user):
         login_as(client, regular_user)
-        c = make_client(regular_user, company_name="FU Corp")
+        c = make_company(regular_user, company_name="FU Corp")
         fu = make_followup(c, regular_user)
         resp = client.post(
             f"/followups/{fu.id}/reassign",
@@ -158,12 +158,12 @@ class TestReassignment:
         )
         assert resp.status_code == 403
 
-    def test_user_cannot_reassign_contact(self, client, regular_user, other_user):
+    def test_user_cannot_reassign_interaction(self, client, regular_user, other_user):
         login_as(client, regular_user)
-        c = make_client(regular_user, company_name="Ct Corp")
-        ct = make_contact(c, regular_user)
+        c = make_company(regular_user, company_name="Ix Corp")
+        ix = make_interaction(c, regular_user)
         resp = client.post(
-            f"/contacts/{ct.id}/reassign",
+            f"/interactions/{ix.id}/reassign",
             json={"target_user_id": other_user.id},
         )
         assert resp.status_code == 403

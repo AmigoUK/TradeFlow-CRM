@@ -10,7 +10,7 @@ from werkzeug.utils import secure_filename
 from blueprints.auth.decorators import can_access_record, role_required
 from blueprints.followups import followups_bp
 from extensions import db
-from models import Client, FollowUp, PRIORITIES, Attachment, AppSettings
+from models import Company, FollowUp, PRIORITIES, Attachment, AppSettings, Contact
 from models.user import User
 
 
@@ -31,7 +31,7 @@ def list_followups():
     show_overdue = request.args.get("overdue", "").strip()
     show_completed = request.args.get("completed", "").strip()
 
-    query = FollowUp.query.join(Client).options(joinedload(FollowUp.owner))
+    query = FollowUp.query.join(Company).options(joinedload(FollowUp.owner))
 
     # Ownership filter
     query = _ownership_filter(query, FollowUp)
@@ -80,29 +80,29 @@ def list_followups():
 @login_required
 def create_followup():
     if request.method == "POST":
-        client_id = request.form.get("client_id")
+        company_id = request.form.get("company_id")
         due_date_str = request.form.get("due_date", "").strip()
         priority = request.form.get("priority", "medium")
 
-        if not client_id:
+        if not company_id:
             if _is_ajax():
-                clients = Client.query.order_by(Client.company_name).all()
+                companies = Company.query.order_by(Company.company_name).all()
                 html = render_template(
                     "followups/_form_fields.html",
                     followup=None,
-                    clients=clients,
+                    companies=companies,
                     priorities=PRIORITIES,
-                    selected_client_id=None,
+                    selected_company_id=None,
                     today=date.today().isoformat(),
                     panel_mode=True,
                 )
                 return jsonify({"ok": False, "html": html})
-            flash("Please select a client.", "danger")
+            flash("Please select a company.", "danger")
             return redirect(url_for("followups.create_followup"))
 
-        # Verify client ownership
-        client = db.get_or_404(Client, int(client_id))
-        if not can_access_record(client):
+        # Verify company ownership
+        company = db.get_or_404(Company, int(company_id))
+        if not can_access_record(company):
             abort(403)
 
         try:
@@ -118,8 +118,10 @@ def create_followup():
             except ValueError:
                 pass
 
+        contact_id = request.form.get("contact_id")
         followup = FollowUp(
-            client_id=int(client_id),
+            company_id=int(company_id),
+            contact_id=int(contact_id) if contact_id else None,
             due_date=parsed_date,
             due_time=parsed_time,
             priority=priority,
@@ -133,7 +135,7 @@ def create_followup():
         file = request.files.get("file")
         if file and file.filename:
             description = request.form.get("file_description", "").strip() or None
-            _save_followup_file(file, int(client_id), followup.id, description)
+            _save_followup_file(file, int(company_id), followup.id, description)
 
         db.session.commit()
 
@@ -151,22 +153,22 @@ def create_followup():
             return jsonify({
                 "ok": True,
                 "message": "Follow-up created successfully.",
-                "redirect": url_for("clients.detail_client", id=followup.client_id),
+                "redirect": url_for("companies.detail_company", id=followup.company_id),
             })
 
         flash("Follow-up created successfully.", "success")
-        return redirect(url_for("clients.detail_client", id=followup.client_id))
+        return redirect(url_for("companies.detail_company", id=followup.company_id))
 
-    client_id = request.args.get("client_id")
-    clients = Client.query.order_by(Client.company_name).all()
+    company_id = request.args.get("company_id")
+    companies = Company.query.order_by(Company.company_name).all()
 
     if _is_ajax():
         return render_template(
             "followups/_form_fields.html",
             followup=None,
-            clients=clients,
+            companies=companies,
             priorities=PRIORITIES,
-            selected_client_id=int(client_id) if client_id else None,
+            selected_company_id=int(company_id) if company_id else None,
             today=date.today().isoformat(),
             panel_mode=True,
         )
@@ -174,9 +176,9 @@ def create_followup():
     return render_template(
         "followups/form.html",
         followup=None,
-        clients=clients,
+        companies=companies,
         priorities=PRIORITIES,
-        selected_client_id=int(client_id) if client_id else None,
+        selected_company_id=int(company_id) if company_id else None,
         today=date.today().isoformat(),
     )
 
@@ -189,18 +191,19 @@ def edit_followup(id):
         abort(403)
 
     if request.method == "POST":
-        client_id = request.form.get("client_id")
+        company_id = request.form.get("company_id")
+        contact_id = request.form.get("contact_id")
         due_date_str = request.form.get("due_date", "").strip()
 
-        if not client_id:
-            flash("Please select a client.", "danger")
-            clients = Client.query.order_by(Client.company_name).all()
+        if not company_id:
+            flash("Please select a company.", "danger")
+            companies = Company.query.order_by(Company.company_name).all()
             return render_template(
                 "followups/form.html",
                 followup=followup,
-                clients=clients,
+                companies=companies,
                 priorities=PRIORITIES,
-                selected_client_id=followup.client_id,
+                selected_company_id=followup.company_id,
                 today=date.today().isoformat(),
             )
 
@@ -218,7 +221,8 @@ def edit_followup(id):
         else:
             followup.due_time = None
 
-        followup.client_id = int(client_id)
+        followup.company_id = int(company_id)
+        followup.contact_id = int(contact_id) if contact_id else None
         followup.priority = request.form.get("priority", "medium")
         followup.notes = request.form.get("notes", "").strip()
         followup.completed = "completed" in request.form
@@ -227,7 +231,7 @@ def edit_followup(id):
         file = request.files.get("file")
         if file and file.filename:
             description = request.form.get("file_description", "").strip() or None
-            _save_followup_file(file, int(client_id), followup.id, description)
+            _save_followup_file(file, int(company_id), followup.id, description)
 
         db.session.commit()
 
@@ -244,15 +248,15 @@ def edit_followup(id):
             pass
 
         flash("Follow-up updated successfully.", "success")
-        return redirect(url_for("clients.detail_client", id=followup.client_id))
+        return redirect(url_for("companies.detail_company", id=followup.company_id))
 
-    clients = Client.query.order_by(Client.company_name).all()
+    companies = Company.query.order_by(Company.company_name).all()
     return render_template(
         "followups/form.html",
         followup=followup,
-        clients=clients,
+        companies=companies,
         priorities=PRIORITIES,
-        selected_client_id=followup.client_id,
+        selected_company_id=followup.company_id,
         today=date.today().isoformat(),
     )
 
@@ -284,8 +288,8 @@ def complete_followup(id):
         return jsonify({
             "status": status,
             "completed": followup.completed,
-            "clientId": followup.client_id,
-            "clientName": followup.client.company_name,
+            "companyId": followup.company_id,
+            "companyName": followup.company.company_name,
             "notes": followup.notes or "",
         })
 
@@ -300,7 +304,7 @@ def matrix():
     tomorrow = today + timedelta(days=1)
     show_completed = request.args.get("show_completed", "0").strip()
 
-    query = FollowUp.query.join(Client)
+    query = FollowUp.query.join(Company)
     query = _ownership_filter(query, FollowUp)
     if show_completed != "1":
         query = query.filter(FollowUp.completed == False)  # noqa: E712
@@ -330,15 +334,15 @@ def matrix():
     )
 
 
-def _save_followup_file(file, client_id, followup_id, description=None):
+def _save_followup_file(file, company_id, followup_id, description=None):
     """Save an uploaded file and create an Attachment record for a follow-up."""
     upload_folder = current_app.config["UPLOAD_FOLDER"]
-    client_dir = os.path.join(upload_folder, str(client_id))
-    os.makedirs(client_dir, exist_ok=True)
+    company_dir = os.path.join(upload_folder, str(company_id))
+    os.makedirs(company_dir, exist_ok=True)
 
     original_name = secure_filename(file.filename) or "unnamed_file"
     stored_name = f"{uuid.uuid4().hex}_{original_name}"
-    file_path = os.path.join(client_dir, stored_name)
+    file_path = os.path.join(company_dir, stored_name)
     file.save(file_path)
 
     attachment = Attachment(
@@ -347,7 +351,7 @@ def _save_followup_file(file, client_id, followup_id, description=None):
         description=description,
         file_size=os.path.getsize(file_path),
         mime_type=file.content_type or "",
-        client_id=client_id,
+        company_id=company_id,
         followup_id=followup_id,
     )
     db.session.add(attachment)
@@ -359,7 +363,7 @@ def delete_followup(id):
     followup = db.get_or_404(FollowUp, id)
     if not can_access_record(followup):
         abort(403)
-    client_id = followup.client_id
+    company_id = followup.company_id
 
     # Google Calendar sync hook — delete synced event
     try:
@@ -376,7 +380,7 @@ def delete_followup(id):
     db.session.delete(followup)
     db.session.commit()
     flash("Follow-up deleted successfully.", "success")
-    return redirect(url_for("clients.detail_client", id=client_id))
+    return redirect(url_for("companies.detail_company", id=company_id))
 
 
 @followups_bp.route("/<int:id>/reassign", methods=["POST"])

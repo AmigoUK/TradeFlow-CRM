@@ -9,8 +9,11 @@ class FollowUp(db.Model):
     __tablename__ = "followups"
 
     id = db.Column(db.Integer, primary_key=True)
-    client_id = db.Column(
-        db.Integer, db.ForeignKey("clients.id"), nullable=False
+    company_id = db.Column(
+        db.Integer, db.ForeignKey("companies.id"), nullable=False
+    )
+    contact_id = db.Column(
+        db.Integer, db.ForeignKey("contacts.id"), nullable=True
     )
     due_date = db.Column(db.Date, nullable=False, default=date.today)
     due_time = db.Column(db.Time, nullable=True, default=None)

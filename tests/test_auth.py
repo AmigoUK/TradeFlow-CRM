@@ -54,12 +54,12 @@ class TestLogin:
 
     def test_next_redirect(self, client, admin_user):
         resp = client.post(
-            "/login?next=/clients/",
+            "/login?next=/companies/",
             data={"username": "admin", "password": "admin123"},
             follow_redirects=False,
         )
         assert resp.status_code == 302
-        assert "/clients/" in resp.headers["Location"]
+        assert "/companies/" in resp.headers["Location"]
 
     def test_remember_me(self, client, admin_user):
         resp = client.post(

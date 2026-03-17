@@ -2,8 +2,8 @@
 
 from extensions import db
 from models.user import User
-from models.client import Client
-from tests.conftest import login_as, make_client
+from models.company import Company
+from tests.conftest import login_as, make_company
 
 
 # ── List ────────────────────────────────────────────────────────
@@ -156,8 +156,8 @@ class TestResetPassword:
 class TestDelegate:
     def test_delegate_transfers_records(self, client, admin_user, regular_user):
         login_as(client, admin_user)
-        make_client(regular_user, company_name="Delegate Corp")
-        make_client(regular_user, company_name="Delegate Corp 2")
+        make_company(regular_user, company_name="Delegate Corp")
+        make_company(regular_user, company_name="Delegate Corp 2")
 
         resp = client.post(
             f"/users/{regular_user.id}/delegate",
@@ -165,5 +165,5 @@ class TestDelegate:
             follow_redirects=True,
         )
         assert resp.status_code == 200
-        remaining = Client.query.filter_by(user_id=regular_user.id).count()
+        remaining = Company.query.filter_by(user_id=regular_user.id).count()
         assert remaining == 0

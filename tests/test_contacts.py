@@ -1,10 +1,8 @@
-"""Tests for contact/interaction CRUD."""
-
-from datetime import date
+"""Tests for Contact (person) CRUD."""
 
 from extensions import db
 from models.contact import Contact
-from tests.conftest import login_as, make_client, make_contact
+from tests.conftest import login_as, make_company
 
 
 # ── List ────────────────────────────────────────────────────────
@@ -16,21 +14,6 @@ class TestContactList:
         resp = client.get("/contacts/")
         assert resp.status_code == 200
 
-    def test_type_filter(self, client, regular_user):
-        login_as(client, regular_user)
-        c = make_client(regular_user, company_name="Filter Corp")
-        make_contact(c, regular_user, contact_type="phone", notes="Phone call")
-        make_contact(c, regular_user, contact_type="email", notes="Email sent")
-        resp = client.get("/contacts/?type=phone")
-        assert resp.status_code == 200
-
-    def test_date_filter(self, client, regular_user):
-        login_as(client, regular_user)
-        resp = client.get(
-            f"/contacts/?date_from={date.today().isoformat()}&date_to={date.today().isoformat()}"
-        )
-        assert resp.status_code == 200
-
 
 # ── Create ──────────────────────────────────────────────────────
 
@@ -38,39 +21,48 @@ class TestContactList:
 class TestContactCreate:
     def test_create_success(self, client, regular_user):
         login_as(client, regular_user)
-        c = make_client(regular_user, company_name="Contact Corp")
+        c = make_company(regular_user, company_name="Contact Person Corp")
         resp = client.post(
             "/contacts/new",
             data={
-                "client_id": c.id,
-                "date": date.today().isoformat(),
-                "contact_type": "phone",
-                "notes": "Spoke with client",
+                "first_name": "Jane",
+                "last_name": "Doe",
+                "email": "jane@example.com",
+                "company_id": c.id,
             },
             follow_redirects=True,
         )
         assert resp.status_code == 200
-        ct = Contact.query.filter_by(client_id=c.id, notes="Spoke with client").first()
+        ct = Contact.query.filter_by(first_name="Jane", last_name="Doe").first()
         assert ct is not None
-        assert ct.user_id == regular_user.id
 
-    def test_missing_client_rejected(self, client, regular_user):
+    def test_missing_first_name_rejected(self, client, regular_user):
         login_as(client, regular_user)
         resp = client.post(
             "/contacts/new",
-            data={"client_id": "", "date": date.today().isoformat(), "contact_type": "phone"},
+            data={"first_name": "", "last_name": "Doe"},
             follow_redirects=True,
         )
         assert resp.status_code == 200
 
-    def test_ownership_verified(self, client, regular_user, other_user):
+
+# ── Detail ──────────────────────────────────────────────────────
+
+
+class TestContactDetail:
+    def test_shows_contact_info(self, client, regular_user):
         login_as(client, regular_user)
-        c = make_client(other_user, company_name="Other Contact Corp")
-        resp = client.post(
-            "/contacts/new",
-            data={"client_id": c.id, "date": date.today().isoformat(), "contact_type": "phone"},
+        c = make_company(regular_user, company_name="Detail Contact Corp")
+        ct = Contact(
+            first_name="John",
+            last_name="Smith",
+            company_id=c.id,
+            user_id=regular_user.id,
         )
-        assert resp.status_code == 403
+        db.session.add(ct)
+        db.session.commit()
+        resp = client.get(f"/contacts/{ct.id}")
+        assert resp.status_code == 200
 
 
 # ── Edit ────────────────────────────────────────────────────────
@@ -79,32 +71,27 @@ class TestContactCreate:
 class TestContactEdit:
     def test_edit_success(self, client, regular_user):
         login_as(client, regular_user)
-        c = make_client(regular_user, company_name="Edit Contact Corp")
-        ct = make_contact(c, regular_user, notes="Original notes")
+        c = make_company(regular_user, company_name="Edit Contact Corp")
+        ct = Contact(
+            first_name="Original",
+            last_name="Name",
+            company_id=c.id,
+            user_id=regular_user.id,
+        )
+        db.session.add(ct)
+        db.session.commit()
         resp = client.post(
             f"/contacts/{ct.id}/edit",
             data={
-                "client_id": c.id,
-                "date": date.today().isoformat(),
-                "contact_type": "email",
-                "notes": "Updated notes",
+                "first_name": "Updated",
+                "last_name": "Name",
+                "company_id": c.id,
             },
             follow_redirects=True,
         )
         assert resp.status_code == 200
         db.session.refresh(ct)
-        assert ct.notes == "Updated notes"
-        assert ct.contact_type == "email"
-
-    def test_access_denied_for_other_user(self, client, regular_user, other_user):
-        login_as(client, regular_user)
-        c = make_client(other_user, company_name="Foreign Contact Corp")
-        ct = make_contact(c, other_user)
-        resp = client.post(
-            f"/contacts/{ct.id}/edit",
-            data={"client_id": c.id, "date": date.today().isoformat(), "contact_type": "phone"},
-        )
-        assert resp.status_code == 403
+        assert ct.first_name == "Updated"
 
 
 # ── Delete ──────────────────────────────────────────────────────
@@ -113,16 +100,16 @@ class TestContactEdit:
 class TestContactDelete:
     def test_delete_success(self, client, regular_user):
         login_as(client, regular_user)
-        c = make_client(regular_user, company_name="Del Contact Corp")
-        ct = make_contact(c, regular_user)
+        c = make_company(regular_user, company_name="Del Contact Corp")
+        ct = Contact(
+            first_name="Delete",
+            last_name="Me",
+            company_id=c.id,
+            user_id=regular_user.id,
+        )
+        db.session.add(ct)
+        db.session.commit()
         ctid = ct.id
         resp = client.post(f"/contacts/{ctid}/delete", follow_redirects=True)
         assert resp.status_code == 200
         assert db.session.get(Contact, ctid) is None
-
-    def test_access_denied_for_other_user(self, client, regular_user, other_user):
-        login_as(client, regular_user)
-        c = make_client(other_user, company_name="Foreign Del Corp")
-        ct = make_contact(c, other_user)
-        resp = client.post(f"/contacts/{ct.id}/delete")
-        assert resp.status_code == 403

@@ -25,8 +25,9 @@ Portfolio project for junior developer showcase.
 - First registered user auto-promoted to admin
 
 ## Architecture
-- **Blueprints** (10): auth, dashboard, clients, contacts, followups, attachments, settings, users, data_io, google — each in `blueprints/<name>/`
-- **Models** (18): User, Client, Contact, FollowUp, Attachment, AttachmentCategory, AttachmentTag, CustomFieldDefinition, CustomFieldValue, QuickFunction, InteractionType, AppSettings, GoogleOAuthConfig, GoogleCredential, GoogleCalendarSync, GoogleDoc, DocTemplate, GoogleDriveFile — each in `models/`
+- **Blueprints** (12): auth, dashboard, companies, contacts, interactions, followups, attachments, settings, users, data_io, google, orders — each in `blueprints/<name>/`
+- **Models** (20): User, Company, Contact, SocialAccount, Interaction, FollowUp, Attachment, AttachmentCategory, AttachmentTag, CustomFieldDefinition, CustomFieldValue, QuickFunction, InteractionType, AppSettings, GoogleOAuthConfig, GoogleCredential, GoogleCalendarSync, GoogleDoc, DocTemplate, GoogleDriveFile — each in `models/`
+- **Data hierarchy**: Company → Contact (person) → Interaction (communication log)
 - **Templates**: `templates/<blueprint>/` + `templates/partials/`
 - **Static CSS**: `static/css/custom.css`
 - **Static JS**: `static/js/main.js`, `kanban.js`, `panel.js`, `reassign.js`, `settings.js`
@@ -44,13 +45,14 @@ Portfolio project for junior developer showcase.
 
 ## Key Patterns
 - Constants (statuses, types, priorities) live alongside their model
-- Cascade delete: removing a client deletes its contacts and follow-ups
+- Cascade delete: removing a company deletes its interactions and follow-ups
+- Contact (person) job changes: update `company_id` and set `previous_company_id`; old interactions keep their original `company_id`
 - `is_overdue` is a hybrid property on FollowUp
 - Flash messages use Bootstrap alert categories: success, danger, warning, info
 
 ## Testing
 - pytest + pytest-flask, fixtures in `conftest.py`
-- 17 test modules in `tests/` covering all blueprints and models
+- 18 test modules in `tests/` covering all blueprints and models
 - Run: `python -m pytest --tb=short -q`
 
 ## Don'ts

@@ -6,7 +6,7 @@ from blueprints.auth.decorators import role_required
 from blueprints.settings import settings_bp
 from extensions import db
 from models import (
-    QuickFunction, AppSettings, InteractionType, Contact, CustomFieldDefinition,
+    QuickFunction, AppSettings, InteractionType, Interaction, CustomFieldDefinition,
     AttachmentCategory, AttachmentTag, Attachment, GoogleOAuthConfig, DocTemplate,
 )
 
@@ -186,7 +186,7 @@ def edit_interaction_type(id):
             flash(f"Interaction type '{label}' already exists.", "danger")
             return redirect(url_for("settings.settings_page"))
         # Update any existing contacts using the old label
-        Contact.query.filter_by(contact_type=it.label).update({"contact_type": label})
+        Interaction.query.filter_by(interaction_type=it.label).update({"interaction_type": label})
 
     icon = request.form.get("icon", it.icon).strip()
     if not icon.startswith("bi-"):
@@ -225,7 +225,7 @@ def delete_interaction_type(id):
     it = db.get_or_404(InteractionType, id)
 
     # Refuse deletion if any contacts use this type
-    in_use = Contact.query.filter_by(contact_type=it.label).first()
+    in_use = Interaction.query.filter_by(interaction_type=it.label).first()
     if in_use:
         flash(f"Cannot delete '{it.label}' — it is used by existing interactions. Deactivate it instead.", "danger")
         return redirect(url_for("settings.settings_page"))

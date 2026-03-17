@@ -23,11 +23,11 @@ class Attachment(db.Model):
     description = db.Column(db.String(200), nullable=True)
     file_size = db.Column(db.Integer, default=0)
     mime_type = db.Column(db.String(100), default="")
-    client_id = db.Column(
-        db.Integer, db.ForeignKey("clients.id"), nullable=False
+    company_id = db.Column(
+        db.Integer, db.ForeignKey("companies.id"), nullable=False
     )
-    contact_id = db.Column(
-        db.Integer, db.ForeignKey("contacts.id"), nullable=True
+    interaction_id = db.Column(
+        db.Integer, db.ForeignKey("interactions.id"), nullable=True
     )
     followup_id = db.Column(
         db.Integer, db.ForeignKey("followups.id"), nullable=True

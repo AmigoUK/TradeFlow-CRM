@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+
+{% block title %}{{ 'Edit' if company else 'New' }} Company — NextStep CRM{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{{ url_for('companies.list_companies') }}">Companies</a></li>
+        <li class="breadcrumb-item active">{{ 'Edit' if company else 'New' }}</li>
+    </ol>
+</nav>
+
+<h1>{{ 'Edit' if company else 'New' }} Company</h1>
+
+<div class="row">
+    <div class="col-lg-8">
+        {% include "companies/_form_fields.html" %}
+    </div>
+</div>
+{% endblock %}

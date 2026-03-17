@@ -1,13 +1,13 @@
 import os
 from datetime import date, timedelta
 
-from flask import Flask, render_template
+from flask import Flask, redirect, render_template, request
 from markupsafe import Markup
 
 from config import Config
 from extensions import csrf, db, login_manager
 
-APP_VERSION = "0.23.0-beta"
+APP_VERSION = "0.24.0-beta"
 
 
 def tel_link(value):
@@ -15,7 +15,7 @@ def tel_link(value):
     if value:
         safe_value = Markup.escape(value)
         return Markup(f'<a href="tel:{safe_value}">{safe_value}</a>')
-    return "—"
+    return "\u2014"
 
 
 def mailto_link(value):
@@ -23,13 +23,13 @@ def mailto_link(value):
     if value:
         safe_value = Markup.escape(value)
         return Markup(f'<a href="mailto:{safe_value}">{safe_value}</a>')
-    return "—"
+    return "\u2014"
 
 
 def relative_date(d):
     """Jinja2 filter: render a date relative to today."""
     if d is None:
-        return "—"
+        return "\u2014"
     today = date.today()
     if isinstance(d, str):
         return d
@@ -94,7 +94,8 @@ def create_app(config_class=None):
 
     from blueprints.auth import auth_bp
     from blueprints.dashboard import dashboard_bp
-    from blueprints.clients import clients_bp
+    from blueprints.companies import companies_bp
+    from blueprints.interactions import interactions_bp
     from blueprints.contacts import contacts_bp
     from blueprints.followups import followups_bp
     from blueprints.settings import settings_bp
@@ -102,10 +103,12 @@ def create_app(config_class=None):
     from blueprints.users import users_bp
     from blueprints.data_io import data_io_bp
     from blueprints.google import google_bp
+    from blueprints.orders import orders_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(dashboard_bp)
-    app.register_blueprint(clients_bp, url_prefix="/clients")
+    app.register_blueprint(companies_bp, url_prefix="/companies")
+    app.register_blueprint(interactions_bp, url_prefix="/interactions")
     app.register_blueprint(contacts_bp, url_prefix="/contacts")
     app.register_blueprint(followups_bp, url_prefix="/followups")
     app.register_blueprint(settings_bp, url_prefix="/settings")
@@ -113,6 +116,13 @@ def create_app(config_class=None):
     app.register_blueprint(users_bp, url_prefix="/users")
     app.register_blueprint(data_io_bp, url_prefix="/settings/data")
     app.register_blueprint(google_bp, url_prefix="/google")
+    app.register_blueprint(orders_bp, url_prefix="/admin/orders")
+
+    # ── Backward-compatible redirects ──────────────────────────
+    @app.route("/clients/")
+    @app.route("/clients/<path:rest>")
+    def redirect_clients(rest=""):
+        return redirect(f"/companies/{rest}", code=301)
 
     # Error handlers
     @app.errorhandler(403)
@@ -121,7 +131,8 @@ def create_app(config_class=None):
 
     with app.app_context():
         from models import (  # noqa: F401
-            Client, Contact, FollowUp, QuickFunction, DEFAULT_QUICK_FUNCTIONS,
+            Company, Contact, SocialAccount, Interaction,
+            FollowUp, QuickFunction, DEFAULT_QUICK_FUNCTIONS,
             AppSettings, InteractionType, DEFAULT_INTERACTION_TYPES,
             CustomFieldDefinition, CustomFieldValue, DEFAULT_CUSTOM_FIELDS,
             AttachmentCategory, DEFAULT_ATTACHMENT_CATEGORIES,
@@ -133,38 +144,171 @@ def create_app(config_class=None):
             GoogleDoc, DocTemplate,
             GoogleDriveFile,
         )
-        db.create_all()
-        os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
+
+        inspector = db.inspect(db.engine)
+        existing_tables = inspector.get_table_names()
+
+        # ── Major schema migration: clients→companies, contacts→interactions ──
+        if "clients" in existing_tables and "companies" not in existing_tables:
+            db.session.execute(db.text("ALTER TABLE clients RENAME TO companies"))
+            db.session.commit()
+            # Refresh inspector after rename
+            inspector = db.inspect(db.engine)
+            existing_tables = inspector.get_table_names()
+
+        if "contacts" in existing_tables and "interactions" not in existing_tables:
+            db.session.execute(db.text("ALTER TABLE contacts RENAME TO interactions"))
+            db.session.commit()
+            inspector = db.inspect(db.engine)
+            existing_tables = inspector.get_table_names()
+
+        # ── Rename columns in interactions table ──
+        if "interactions" in existing_tables:
+            int_columns = [col["name"] for col in inspector.get_columns("interactions")]
+            if "client_id" in int_columns and "company_id" not in int_columns:
+                db.session.execute(db.text(
+                    "ALTER TABLE interactions RENAME COLUMN client_id TO company_id"
+                ))
+            if "contact_type" in int_columns and "interaction_type" not in int_columns:
+                db.session.execute(db.text(
+                    "ALTER TABLE interactions RENAME COLUMN contact_type TO interaction_type"
+                ))
+            if "contact_id" not in int_columns:
+                db.session.execute(db.text(
+                    "ALTER TABLE interactions ADD COLUMN contact_id INTEGER REFERENCES contacts(id)"
+                ))
+            db.session.commit()
+
+        # ── Rename client_id→company_id in followups ──
+        if "followups" in existing_tables:
+            fu_columns = [col["name"] for col in inspector.get_columns("followups")]
+            if "client_id" in fu_columns and "company_id" not in fu_columns:
+                db.session.execute(db.text(
+                    "ALTER TABLE followups RENAME COLUMN client_id TO company_id"
+                ))
+            if "contact_id" not in fu_columns:
+                db.session.execute(db.text(
+                    "ALTER TABLE followups ADD COLUMN contact_id INTEGER REFERENCES contacts(id)"
+                ))
+            db.session.commit()
+
+        # ── Rename client_id→company_id in attachments ──
+        if "attachments" in existing_tables:
+            att_columns = [col["name"] for col in inspector.get_columns("attachments")]
+            if "client_id" in att_columns and "company_id" not in att_columns:
+                db.session.execute(db.text(
+                    "ALTER TABLE attachments RENAME COLUMN client_id TO company_id"
+                ))
+            if "contact_id" in att_columns and "interaction_id" not in att_columns:
+                db.session.execute(db.text(
+                    "ALTER TABLE attachments RENAME COLUMN contact_id TO interaction_id"
+                ))
+            if "storage_type" not in att_columns:
+                db.session.execute(db.text(
+                    "ALTER TABLE attachments ADD COLUMN storage_type VARCHAR(10) DEFAULT 'local'"
+                ))
+            if "google_drive_file_id" not in att_columns:
+                db.session.execute(db.text(
+                    "ALTER TABLE attachments ADD COLUMN google_drive_file_id INTEGER"
+                ))
+            db.session.commit()
+
+        # ── Rename client_id→company_id in custom_field_values ──
+        if "custom_field_values" in existing_tables:
+            cfv_columns = [col["name"] for col in inspector.get_columns("custom_field_values")]
+            if "client_id" in cfv_columns and "company_id" not in cfv_columns:
+                db.session.execute(db.text(
+                    "ALTER TABLE custom_field_values RENAME COLUMN client_id TO company_id"
+                ))
+            db.session.commit()
+
+        # ── Rename FKs in google_docs ──
+        if "google_docs" in existing_tables:
+            gd_columns = [col["name"] for col in inspector.get_columns("google_docs")]
+            if "client_id" in gd_columns and "company_id" not in gd_columns:
+                db.session.execute(db.text(
+                    "ALTER TABLE google_docs RENAME COLUMN client_id TO company_id"
+                ))
+            if "contact_id" in gd_columns and "interaction_id" not in gd_columns:
+                db.session.execute(db.text(
+                    "ALTER TABLE google_docs RENAME COLUMN contact_id TO interaction_id"
+                ))
+            db.session.commit()
+
+        # ── Rename FKs in google_drive_files ──
+        if "google_drive_files" in existing_tables:
+            gdf_columns = [col["name"] for col in inspector.get_columns("google_drive_files")]
+            if "client_id" in gdf_columns and "company_id" not in gdf_columns:
+                db.session.execute(db.text(
+                    "ALTER TABLE google_drive_files RENAME COLUMN client_id TO company_id"
+                ))
+            if "contact_id" in gdf_columns and "interaction_id" not in gdf_columns:
+                db.session.execute(db.text(
+                    "ALTER TABLE google_drive_files RENAME COLUMN contact_id TO interaction_id"
+                ))
+            db.session.commit()
+
+        # ── Rename contact_id→interaction_id in google_calendar_syncs ──
+        if "google_calendar_syncs" in existing_tables:
+            gcs_columns = [col["name"] for col in inspector.get_columns("google_calendar_syncs")]
+            if "contact_id" in gcs_columns and "interaction_id" not in gcs_columns:
+                db.session.execute(db.text(
+                    "ALTER TABLE google_calendar_syncs RENAME COLUMN contact_id TO interaction_id"
+                ))
+            db.session.commit()
 
         # ── Schema migration: add user_id columns if missing ────
         inspector = db.inspect(db.engine)
-        for table_name in ("clients", "contacts", "followups"):
-            columns = [col["name"] for col in inspector.get_columns(table_name)]
-            if "user_id" not in columns:
-                db.session.execute(db.text(
-                    f"ALTER TABLE {table_name} ADD COLUMN user_id INTEGER REFERENCES users(id)"
-                ))
+        for table_name in ("companies", "interactions", "followups"):
+            if table_name in inspector.get_table_names():
+                columns = [col["name"] for col in inspector.get_columns(table_name)]
+                if "user_id" not in columns:
+                    db.session.execute(db.text(
+                        f"ALTER TABLE {table_name} ADD COLUMN user_id INTEGER REFERENCES users(id)"
+                    ))
 
         # ── Schema migration: add meet_link columns ──────────
-        for table_name in ("followups", "contacts"):
-            columns = [col["name"] for col in inspector.get_columns(table_name)]
-            if "meet_link" not in columns:
-                db.session.execute(db.text(
-                    f"ALTER TABLE {table_name} ADD COLUMN meet_link VARCHAR(300)"
-                ))
-
-        # ── Schema migration: add storage_type and google_drive_file_id to attachments ──
-        att_columns = [col["name"] for col in inspector.get_columns("attachments")]
-        if "storage_type" not in att_columns:
-            db.session.execute(db.text(
-                "ALTER TABLE attachments ADD COLUMN storage_type VARCHAR(10) DEFAULT 'local'"
-            ))
-        if "google_drive_file_id" not in att_columns:
-            db.session.execute(db.text(
-                "ALTER TABLE attachments ADD COLUMN google_drive_file_id INTEGER"
-            ))
+        for table_name in ("followups", "interactions"):
+            if table_name in inspector.get_table_names():
+                columns = [col["name"] for col in inspector.get_columns(table_name)]
+                if "meet_link" not in columns:
+                    db.session.execute(db.text(
+                        f"ALTER TABLE {table_name} ADD COLUMN meet_link VARCHAR(300)"
+                    ))
 
         db.session.commit()
+
+        # Create any new tables (contacts, social_accounts)
+        db.create_all()
+        os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
+
+        # ── Migrate contact_person data to Contact records ──
+        if "companies" in inspector.get_table_names():
+            comp_columns = [col["name"] for col in inspector.get_columns("companies")]
+            if "contact_person" in comp_columns:
+                rows = db.session.execute(db.text(
+                    "SELECT id, contact_person, email, phone, user_id FROM companies "
+                    "WHERE contact_person IS NOT NULL AND contact_person != '' "
+                    "AND id NOT IN (SELECT COALESCE(company_id, 0) FROM contacts WHERE is_primary = 1)"
+                )).fetchall()
+                for row in rows:
+                    comp_id, cp_name, cp_email, cp_phone, cp_user_id = row
+                    parts = cp_name.strip().split(" ", 1) if cp_name else [""]
+                    first_name = parts[0] if parts else ""
+                    last_name = parts[1] if len(parts) > 1 else ""
+                    if first_name:
+                        contact = Contact(
+                            first_name=first_name,
+                            last_name=last_name,
+                            email=cp_email or "",
+                            phone=cp_phone or "",
+                            company_id=comp_id,
+                            is_primary=True,
+                            user_id=cp_user_id,
+                        )
+                        db.session.add(contact)
+                if rows:
+                    db.session.commit()
 
         # ── Seed default admin user if no users exist ───────────
         if User.query.count() == 0:
@@ -180,7 +324,7 @@ def create_app(config_class=None):
         # ── Batch-assign orphan records to admin ────────────────
         admin_user = User.query.filter_by(role="admin").first()
         if admin_user:
-            for model in (Client, Contact, FollowUp):
+            for model in (Company, Interaction, FollowUp):
                 model.query.filter(model.user_id.is_(None)).update(
                     {"user_id": admin_user.id}
                 )
@@ -262,4 +406,5 @@ if __name__ == "__main__":
     import warnings
     warnings.filterwarnings("ignore", message="resource_tracker:.*semaphore", category=UserWarning)
     app = create_app()
-    app.run(debug=True, host='0.0.0.0', port=5001)
+    app.run(debug=True, host='0.0.0.0', port=5001,
+            ssl_context=('certs/cert.pem', 'certs/key.pem'))

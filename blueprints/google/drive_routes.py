@@ -12,7 +12,7 @@ from blueprints.google.drive_service import (
 )
 from blueprints.google.google_service import google_required
 from extensions import db
-from models import Attachment, Client
+from models import Attachment, Company
 from models.google_drive_file import GoogleDriveFile
 
 
@@ -22,20 +22,20 @@ from models.google_drive_file import GoogleDriveFile
 def drive_upload():
     """Upload a file to Google Drive and optionally create a CRM attachment."""
     file = request.files.get("file")
-    client_id = request.form.get("client_id")
-    contact_id = request.form.get("contact_id")
+    company_id = request.form.get("company_id")
+    interaction_id = request.form.get("interaction_id")
     followup_id = request.form.get("followup_id")
 
     if not file or not file.filename:
         flash("No file selected.", "danger")
         return redirect(request.referrer or url_for("dashboard.dashboard"))
 
-    if not client_id:
-        flash("Client is required.", "danger")
+    if not company_id:
+        flash("Company is required.", "danger")
         return redirect(request.referrer or url_for("dashboard.dashboard"))
 
-    client_id = int(client_id)
-    parent = db.get_or_404(Client, client_id)
+    company_id = int(company_id)
+    parent = db.get_or_404(Company, company_id)
     if not can_access_record(parent):
         flash("Access denied.", "danger")
         return redirect(url_for("dashboard.dashboard"))
@@ -45,7 +45,7 @@ def drive_upload():
 
     if not file_id:
         flash("Failed to upload to Google Drive.", "danger")
-        return redirect(request.referrer or url_for("clients.detail_client", id=client_id))
+        return redirect(request.referrer or url_for("companies.detail_company", id=company_id))
 
     # Create Attachment record with storage_type="drive"
     attachment = Attachment(
@@ -54,8 +54,8 @@ def drive_upload():
         description=request.form.get("description", "").strip() or None,
         file_size=0,
         mime_type=mime_type,
-        client_id=client_id,
-        contact_id=int(contact_id) if contact_id else None,
+        company_id=company_id,
+        interaction_id=int(interaction_id) if interaction_id else None,
         followup_id=int(followup_id) if followup_id else None,
         storage_type="drive",
     )
@@ -68,8 +68,8 @@ def drive_upload():
         filename=file.filename,
         mime_type=mime_type,
         google_url=web_url,
-        client_id=client_id,
-        contact_id=int(contact_id) if contact_id else None,
+        company_id=company_id,
+        interaction_id=int(interaction_id) if interaction_id else None,
         followup_id=int(followup_id) if followup_id else None,
         attachment_id=attachment.id,
         uploaded_by_user_id=current_user.id,
@@ -78,7 +78,7 @@ def drive_upload():
     db.session.commit()
 
     flash(f"File '{file.filename}' uploaded to Google Drive.", "success")
-    return redirect(request.referrer or url_for("clients.detail_client", id=client_id))
+    return redirect(request.referrer or url_for("companies.detail_company", id=company_id))
 
 
 @google_bp.route("/drive/browse")
@@ -112,23 +112,23 @@ def drive_link():
     filename = request.form.get("filename", "").strip() or "Linked File"
     google_url = request.form.get("google_url", "").strip()
     mime_type = request.form.get("mime_type", "")
-    client_id = request.form.get("client_id")
-    contact_id = request.form.get("contact_id")
+    company_id = request.form.get("company_id")
+    interaction_id = request.form.get("interaction_id")
     followup_id = request.form.get("followup_id")
 
-    if not google_file_id or not client_id:
-        flash("File ID and client are required.", "danger")
+    if not google_file_id or not company_id:
+        flash("File ID and company are required.", "danger")
         return redirect(request.referrer or url_for("dashboard.dashboard"))
 
-    client_id = int(client_id)
+    company_id = int(company_id)
 
     drive_file = GoogleDriveFile(
         google_file_id=google_file_id,
         filename=filename,
         mime_type=mime_type,
         google_url=google_url,
-        client_id=client_id,
-        contact_id=int(contact_id) if contact_id else None,
+        company_id=company_id,
+        interaction_id=int(interaction_id) if interaction_id else None,
         followup_id=int(followup_id) if followup_id else None,
         uploaded_by_user_id=current_user.id,
     )
@@ -136,7 +136,7 @@ def drive_link():
     db.session.commit()
 
     flash(f"File '{filename}' linked from Google Drive.", "success")
-    return redirect(url_for("clients.detail_client", id=client_id))
+    return redirect(url_for("companies.detail_company", id=company_id))
 
 
 @google_bp.route("/drive/<int:id>/unlink", methods=["POST"])
@@ -144,14 +144,14 @@ def drive_link():
 def drive_unlink(id):
     """Remove a Drive file link from CRM (does not delete from Google)."""
     drive_file = db.get_or_404(GoogleDriveFile, id)
-    client_id = drive_file.client_id
+    company_id = drive_file.company_id
     filename = drive_file.filename
     db.session.delete(drive_file)
     db.session.commit()
 
     flash(f"File '{filename}' unlinked.", "success")
-    if client_id:
-        return redirect(url_for("clients.detail_client", id=client_id))
+    if company_id:
+        return redirect(url_for("companies.detail_company", id=company_id))
     return redirect(request.referrer or url_for("dashboard.dashboard"))
 
 
@@ -167,6 +167,6 @@ def drive_share(id):
     else:
         flash("Failed to set sharing permissions.", "danger")
 
-    if drive_file.client_id:
-        return redirect(url_for("clients.detail_client", id=drive_file.client_id))
+    if drive_file.company_id:
+        return redirect(url_for("companies.detail_company", id=drive_file.company_id))
     return redirect(request.referrer or url_for("dashboard.dashboard"))

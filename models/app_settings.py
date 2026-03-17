@@ -10,6 +10,7 @@ class AppSettings(db.Model):
     pagination_enabled = db.Column(db.Boolean, nullable=False, default=True)
     pagination_size = db.Column(db.Integer, nullable=False, default=25)
     back_to_top = db.Column(db.Boolean, nullable=False, default=True)
+    risk_assessment_mode = db.Column(db.String(10), nullable=False, default="full")
 
     @staticmethod
     def get():
@@ -23,6 +24,7 @@ class AppSettings(db.Model):
                 pagination_enabled=True,
                 pagination_size=25,
                 back_to_top=True,
+                risk_assessment_mode="full",
             )
             db.session.add(settings)
             db.session.commit()

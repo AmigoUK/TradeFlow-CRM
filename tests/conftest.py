@@ -7,9 +7,10 @@ import pytest
 
 from extensions import db as _db
 from models.user import User
-from models.client import Client
-from models.contact import Contact
+from models.company import Company
+from models.interaction import Interaction
 from models.followup import FollowUp
+from models.contact import Contact
 
 
 # ── Test configuration ──────────────────────────────────────────
@@ -118,8 +119,8 @@ def login_as(client, user):
 # ── Factory functions ───────────────────────────────────────────
 
 
-def make_client(user, **overrides):
-    """Create and return a Client owned by user."""
+def make_company(user, **overrides):
+    """Create and return a Company owned by user."""
     defaults = {
         "company_name": "Test Corp",
         "industry": "Tech",
@@ -127,36 +128,36 @@ def make_client(user, **overrides):
         "user_id": user.id,
     }
     defaults.update(overrides)
-    c = Client(**defaults)
+    c = Company(**defaults)
     _db.session.add(c)
     _db.session.commit()
     return c
 
 
-def make_contact(client_obj, user, **overrides):
-    """Create and return a Contact linked to client_obj and owned by user."""
+def make_interaction(company_obj, user, **overrides):
+    """Create and return an Interaction linked to company_obj and owned by user."""
     from datetime import date
 
     defaults = {
-        "client_id": client_obj.id,
+        "company_id": company_obj.id,
         "date": date.today(),
-        "contact_type": "phone",
-        "notes": "Test contact",
+        "interaction_type": "phone",
+        "notes": "Test interaction",
         "user_id": user.id,
     }
     defaults.update(overrides)
-    c = Contact(**defaults)
-    _db.session.add(c)
+    i = Interaction(**defaults)
+    _db.session.add(i)
     _db.session.commit()
-    return c
+    return i
 
 
-def make_followup(client_obj, user, **overrides):
-    """Create and return a FollowUp linked to client_obj and owned by user."""
+def make_followup(company_obj, user, **overrides):
+    """Create and return a FollowUp linked to company_obj and owned by user."""
     from datetime import date
 
     defaults = {
-        "client_id": client_obj.id,
+        "company_id": company_obj.id,
         "due_date": date.today(),
         "priority": "medium",
         "notes": "Test follow-up",

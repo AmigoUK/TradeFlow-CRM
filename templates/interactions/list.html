@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+
+{% block title %}Interactions — NextStep CRM{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Interactions</h1>
+    <a href="{{ url_for('interactions.create_interaction') }}" class="btn btn-primary">
+        <i class="bi bi-plus-lg me-1"></i>Log Interaction
+    </a>
+</div>
+
+<!-- Filters -->
+<form method="GET" class="row g-3 mb-4">
+    <div class="col-md-3">
+        <select name="type" class="form-select">
+            <option value="">All Types</option>
+            {% for t in interaction_types %}
+                <option value="{{ t }}" {% if selected_type == t %}selected{% endif %}>
+                    {{ t|capitalize }}
+                </option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="col-md-3">
+        <input type="date" name="date_from" class="form-control" placeholder="From"
+               value="{{ date_from }}" title="From date">
+    </div>
+    <div class="col-md-3">
+        <input type="date" name="date_to" class="form-control" placeholder="To"
+               value="{{ date_to }}" title="To date">
+    </div>
+    <div class="col-md-3">
+        <button type="submit" class="btn btn-outline-primary w-100">Filter</button>
+    </div>
+</form>
+
+{% if interactions %}
+{% if current_user.has_role_at_least("manager") %}
+<div id="bulkToolbar" class="alert alert-secondary d-flex align-items-center gap-3 mb-3" style="display: none !important;">
+    <span><strong id="bulkCount">0</strong> selected</span>
+    <select id="bulkReassignUser" class="form-select form-select-sm" style="width: auto; min-width: 160px;">
+        <option value="">Reassign to...</option>
+        {% for u in all_users if u.is_active_user %}
+        <option value="{{ u.id }}">{{ u.display_name }}</option>
+        {% endfor %}
+    </select>
+    <button id="bulkReassignBtn" class="btn btn-sm btn-primary" data-url="{{ url_for('interactions.bulk_reassign_interactions') }}">
+        <i class="bi bi-arrow-left-right me-1"></i>Reassign
+    </button>
+</div>
+{% endif %}
+<div class="table-responsive">
+    <table class="table table-hover align-middle">
+        <thead class="table-light">
+            <tr>
+                {% if current_user.has_role_at_least("manager") %}
+                <th style="width: 2rem;"><input type="checkbox" class="form-check-input" id="bulkSelectAll"></th>
+                {% endif %}
+                <th>Date</th>
+                <th>Company</th>
+                <th>Type</th>
+                <th>Notes</th>
+                <th>Outcome</th>
+                {% if current_user.has_role_at_least("manager") %}<th>Owner</th>{% endif %}
+                <th class="text-end">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for interaction in interactions %}
+            <tr>
+                {% if current_user.has_role_at_least("manager") %}
+                <td><input type="checkbox" class="form-check-input bulk-select-cb" value="{{ interaction.id }}"></td>
+                {% endif %}
+                <td data-label="Date">{{ interaction.date|relative_date }}</td>
+                <td data-label="Company">
+                    <a href="{{ url_for('companies.detail_company', id=interaction.company_id) }}" class="text-decoration-none">
+                        {{ interaction.company.company_name }}
+                    </a>
+                </td>
+                <td data-label="Type"><span class="badge" style="background-color: {{ interaction_types_map.get(interaction.interaction_type, {}).colour|default('#6c757d') }}">{{ interaction.interaction_type|capitalize }}</span></td>
+                <td data-label="Notes">{{ interaction.notes[:60] }}{% if interaction.notes|length > 60 %}...{% endif %}</td>
+                <td data-label="Outcome">{{ interaction.outcome or '—' }}</td>
+                {% if current_user.has_role_at_least("manager") %}
+                <td data-label="Owner">{{ interaction.owner.display_name if interaction.owner else '—' }}</td>
+                {% endif %}
+                <td data-label="Actions" class="text-end">
+                    <a href="{{ url_for('interactions.edit_interaction', id=interaction.id) }}" class="btn btn-sm btn-outline-secondary">
+                        <i class="bi bi-pencil"></i>
+                    </a>
+                    <button type="button" class="btn btn-sm btn-outline-danger"
+                            data-bs-toggle="modal" data-bs-target="#confirmDeleteModal"
+                            data-item-name="this interaction"
+                            data-delete-url="{{ url_for('interactions.delete_interaction', id=interaction.id) }}">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% include "partials/_pagination.html" %}
+{% else %}
+<div class="empty-state">
+    <i class="bi bi-chat-dots d-block"></i>
+    <h5>No interactions found</h5>
+    <p>{% if selected_type or date_from or date_to %}Try adjusting your filters.{% else %}Log your first interaction to get started. <a href="{{ url_for('interactions.create_interaction') }}">Log one now</a>{% endif %}</p>
+</div>
+{% endif %}
+{% endblock %}
